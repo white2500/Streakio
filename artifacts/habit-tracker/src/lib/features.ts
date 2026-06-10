@@ -76,7 +76,7 @@ export const UPGRADE_COPY = {
     "Data export",
     "Future premium updates included",
   ],
-  price: "$29.99",
+  price: "2€",
   priceCaption: "one-time payment",
 } as const;
 
