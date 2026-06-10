@@ -8,9 +8,9 @@ import {
   isFuture,
   parseISO,
 } from 'date-fns';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check } from 'lucide-react';
-import { useHabits } from '@/hooks/useHabits';
+import { Reorder, useDragControls, AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, GripVertical } from 'lucide-react';
+import { useHabits, type Habit } from '@/hooks/useHabits';
 
 const PALETTE = [
   '#ef4444',
@@ -23,6 +23,105 @@ const PALETTE = [
   '#ec4899',
 ];
 
+/* ── per-row component so each row gets its own drag controls ── */
+function HabitRow({
+  habit,
+  days,
+  daysInMonth,
+  completions,
+  onDelete,
+  onToggle,
+}: {
+  habit: Habit;
+  days: { day: number; dateStr: string; isToday: boolean; isFuture: boolean }[];
+  daysInMonth: number;
+  completions: Record<string, boolean>;
+  onDelete: (id: string) => void;
+  onToggle: (id: string, dateStr: string) => void;
+}) {
+  const controls = useDragControls();
+  const completed = days.filter(d => completions[`${habit.id}-${d.dateStr}`]).length;
+
+  return (
+    <Reorder.Item
+      value={habit}
+      dragListener={false}
+      dragControls={controls}
+      className="flex items-center border-b border-white/6 last:border-b-0 bg-black"
+      data-testid={`row-habit-${habit.id}`}
+    >
+      {/* Sticky name cell */}
+      <div className="sticky left-0 z-10 bg-black w-40 shrink-0 px-3 py-3 flex items-center gap-1.5">
+        {/* Drag handle */}
+        <button
+          onPointerDown={e => controls.start(e)}
+          data-testid={`handle-${habit.id}`}
+          className="touch-none shrink-0 text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+
+        <span className="flex-1 text-sm font-medium truncate">{habit.name}</span>
+
+        <button
+          onClick={() => onDelete(habit.id)}
+          data-testid={`button-delete-${habit.id}`}
+          aria-label={`Delete ${habit.name}`}
+          className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Checkboxes */}
+      {days.map(({ dateStr, isFuture: futureFlag }) => {
+        const isChecked = !!completions[`${habit.id}-${dateStr}`];
+        return (
+          <div
+            key={dateStr}
+            className={`w-9 shrink-0 flex items-center justify-center py-3 ${futureFlag ? 'opacity-25' : ''}`}
+          >
+            <button
+              onClick={() => !futureFlag && onToggle(habit.id, dateStr)}
+              disabled={futureFlag}
+              data-testid={`checkbox-${habit.id}-${dateStr}`}
+              style={
+                isChecked
+                  ? { backgroundColor: habit.color, borderColor: habit.color }
+                  : { borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'transparent' }
+              }
+              className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
+                ${futureFlag ? 'cursor-not-allowed' : 'cursor-pointer active:scale-90'}`}
+            >
+              <AnimatePresence>
+                {isChecked && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                  >
+                    <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+          </div>
+        );
+      })}
+
+      {/* Progress */}
+      <div className="w-16 shrink-0 px-2 py-3 flex items-center justify-end">
+        <span className="text-xs text-white/30 tabular-nums">
+          {completed}/{daysInMonth}
+        </span>
+      </div>
+    </Reorder.Item>
+  );
+}
+
+/* ── main page ── */
 export default function HabitTracker() {
   const {
     habits,
@@ -32,6 +131,7 @@ export default function HabitTracker() {
     addHabit,
     deleteHabit,
     toggleCompletion,
+    reorderHabits,
     isLoaded,
   } = useHabits();
 
@@ -42,24 +142,18 @@ export default function HabitTracker() {
   const monthDate = useMemo(() => parseISO(`${currentMonth}-01`), [currentMonth]);
   const daysInMonth = useMemo(() => getDaysInMonth(monthDate), [monthDate]);
 
-  const days = useMemo(() => {
-    return Array.from({ length: daysInMonth }, (_, i) => {
+  const days = useMemo(() =>
+    Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
       const dateStr = `${currentMonth}-${day.toString().padStart(2, '0')}`;
       const dateObj = parseISO(dateStr);
-      return {
-        day,
-        dateStr,
-        isToday: isToday(dateObj),
-        isFuture: isFuture(dateObj),
-      };
-    });
-  }, [daysInMonth, currentMonth]);
+      return { day, dateStr, isToday: isToday(dateObj), isFuture: isFuture(dateObj) };
+    }),
+    [daysInMonth, currentMonth]
+  );
 
-  const handlePrevMonth = () =>
-    setCurrentMonth(format(subMonths(monthDate, 1), 'yyyy-MM'));
-  const handleNextMonth = () =>
-    setCurrentMonth(format(addMonths(monthDate, 1), 'yyyy-MM'));
+  const handlePrevMonth = () => setCurrentMonth(format(subMonths(monthDate, 1), 'yyyy-MM'));
+  const handleNextMonth = () => setCurrentMonth(format(addMonths(monthDate, 1), 'yyyy-MM'));
 
   const handleAddHabit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,10 +168,10 @@ export default function HabitTracker() {
   if (!isLoaded) return null;
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans select-none">
+    <div className="h-screen bg-black text-white flex flex-col font-sans select-none overflow-hidden">
 
-      {/* Sticky header */}
-      <header className="sticky top-0 z-30 bg-black border-b border-white/10 px-4 pt-12 pb-3">
+      {/* ── App header (fixed height, full width) ── */}
+      <header className="shrink-0 bg-black border-b border-white/10 px-4 pt-12 pb-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">Habits</h1>
           <div className="flex items-center gap-1">
@@ -105,15 +199,17 @@ export default function HabitTracker() {
         </div>
       </header>
 
-      {/* Grid — horizontally scrollable */}
-      <div className="flex-1 overflow-x-auto">
+      {/* ── Scrollable grid (single container, scrolls both X and Y) ── */}
+      <div className="flex-1 overflow-auto">
         <div className="min-w-max">
 
-          {/* Day header row */}
-          <div className="flex sticky top-[89px] z-20 bg-black border-b border-white/10">
-            {/* Habit name column header */}
-            <div className="sticky left-0 z-10 bg-black w-36 shrink-0 px-4 py-2 flex items-center">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Habit</span>
+          {/* Day header — sticky to top of scroll container */}
+          <div className="sticky top-0 z-20 bg-black border-b border-white/10 flex">
+            {/* Corner cell — also sticky left */}
+            <div className="sticky left-0 z-30 bg-black w-40 shrink-0 px-3 py-2 flex items-center">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30 pl-5">
+                Habit
+              </span>
             </div>
             {/* Day numbers */}
             {days.map(({ day, isToday: todayFlag, isFuture: futureFlag }) => (
@@ -129,7 +225,6 @@ export default function HabitTracker() {
                 </span>
               </div>
             ))}
-            {/* Progress header spacer */}
             <div className="w-16 shrink-0" />
           </div>
 
@@ -140,89 +235,30 @@ export default function HabitTracker() {
               <p className="text-xs mt-1">Tap the + button to add one.</p>
             </div>
           ) : (
-            <AnimatePresence>
-              {habits.map((habit) => {
-                const completed = days.filter(
-                  d => completions[`${habit.id}-${d.dateStr}`]
-                ).length;
-
-                return (
-                  <motion.div
-                    key={habit.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                    transition={{ duration: 0.18 }}
-                    className="flex items-center border-b border-white/6 last:border-b-0"
-                    data-testid={`row-habit-${habit.id}`}
-                  >
-                    {/* Sticky habit name */}
-                    <div className="sticky left-0 z-10 bg-black w-36 shrink-0 px-4 py-3 flex items-center justify-between gap-1">
-                      <span className="text-sm font-medium truncate leading-tight">{habit.name}</span>
-                      <button
-                        onClick={() => deleteHabit(habit.id)}
-                        data-testid={`button-delete-${habit.id}`}
-                        aria-label={`Delete ${habit.name}`}
-                        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-white/20 hover:text-white/60 active:text-white transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Checkboxes */}
-                    {days.map(({ dateStr, isFuture: futureFlag }) => {
-                      const isChecked = !!completions[`${habit.id}-${dateStr}`];
-                      return (
-                        <div
-                          key={dateStr}
-                          className={`w-9 shrink-0 flex items-center justify-center py-3 ${futureFlag ? 'opacity-25' : ''}`}
-                        >
-                          <button
-                            onClick={() => !futureFlag && toggleCompletion(habit.id, dateStr)}
-                            disabled={futureFlag}
-                            data-testid={`checkbox-${habit.id}-${dateStr}`}
-                            style={
-                              isChecked
-                                ? { backgroundColor: habit.color, borderColor: habit.color }
-                                : { borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'transparent' }
-                            }
-                            className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
-                              ${futureFlag ? 'cursor-not-allowed' : 'cursor-pointer active:scale-90'}
-                            `}
-                          >
-                            <AnimatePresence>
-                              {isChecked && (
-                                <motion.div
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  exit={{ scale: 0, opacity: 0 }}
-                                  transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-                                >
-                                  <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </button>
-                        </div>
-                      );
-                    })}
-
-                    {/* Progress */}
-                    <div className="w-16 shrink-0 px-2 py-3 flex items-center justify-end">
-                      <span className="text-xs text-white/30 tabular-nums">
-                        {completed}/{daysInMonth}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+            <Reorder.Group
+              axis="y"
+              values={habits}
+              onReorder={reorderHabits}
+              className="outline-none"
+            >
+              {habits.map(habit => (
+                <HabitRow
+                  key={habit.id}
+                  habit={habit}
+                  days={days}
+                  daysInMonth={daysInMonth}
+                  completions={completions}
+                  onDelete={deleteHabit}
+                  onToggle={toggleCompletion}
+                />
+              ))}
+            </Reorder.Group>
           )}
         </div>
       </div>
 
-      {/* Add habit form */}
-      <div className="sticky bottom-0 bg-black border-t border-white/10 px-4 pt-3 pb-6">
+      {/* ── Bottom bar (fixed height, full width) ── */}
+      <div className="shrink-0 bg-black border-t border-white/10 px-4 pt-3 pb-8">
         <AnimatePresence>
           {showForm && (
             <motion.div
@@ -242,7 +278,6 @@ export default function HabitTracker() {
                   data-testid="input-new-habit"
                   className="w-full text-sm px-3 py-2.5 rounded-lg border border-white/15 bg-white/8 text-white placeholder:text-white/30 outline-none focus:border-white/40 transition-colors"
                 />
-                {/* Color swatches */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-white/40 mr-1">Color</span>
                   {PALETTE.map(color => (

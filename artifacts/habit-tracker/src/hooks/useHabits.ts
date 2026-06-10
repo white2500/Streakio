@@ -66,6 +66,10 @@ export function useHabits() {
     setCompletions(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
+  const reorderHabits = useCallback((newOrder: Habit[]) => {
+    setHabits(newOrder);
+  }, []);
+
   return {
     habits,
     completions,
@@ -74,6 +78,7 @@ export function useHabits() {
     addHabit,
     deleteHabit,
     toggleCompletion,
+    reorderHabits,
     isLoaded,
   };
 }
