@@ -311,6 +311,23 @@ export default function Habito() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmDeleteHabit = habits.find((h) => h.id === confirmDeleteId);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Scroll so today's column sits at the right edge whenever the visible month
+  // is the current month. Runs after the grid renders and after load.
+  useEffect(() => {
+    if (!isLoaded) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const todayMonth = format(new Date(), "yyyy-MM");
+    if (currentMonth !== todayMonth) return;
+    const todayDay = new Date().getDate();
+    const DAY_W = 36;   // w-9
+    const STICKY_W = 160; // w-40 habit name column
+    const scrollTarget = todayDay * DAY_W - (el.clientWidth - STICKY_W);
+    el.scrollLeft = Math.max(0, scrollTarget);
+  }, [isLoaded, currentMonth]);
+
   const monthDate = useMemo(
     () => parseISO(`${currentMonth}-01`),
     [currentMonth],
@@ -428,7 +445,7 @@ export default function Habito() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto">
+      <div ref={scrollRef} className="flex-1 overflow-auto">
         <div className="min-w-max">
           <div className="sticky top-0 z-20 bg-black border-b border-white/10 flex">
             <div className="sticky left-0 z-30 bg-black w-40 shrink-0 px-3 py-2 flex items-center">
