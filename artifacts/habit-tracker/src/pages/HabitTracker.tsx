@@ -62,14 +62,12 @@ const PALETTE = [
 function HabitRow({
   habit,
   days,
-  daysInMonth,
   completions,
   onDelete,
   onToggle,
 }: {
   habit: Habit;
   days: { day: number; dateStr: string; isToday: boolean; isFuture: boolean }[];
-  daysInMonth: number;
   completions: Record<string, boolean>;
   onDelete: (id: string) => void;
   onToggle: (id: string, dateStr: string) => void;
@@ -84,74 +82,98 @@ function HabitRow({
       value={habit}
       dragListener={false}
       dragControls={controls}
-      className="flex items-center border-b border-white/6 last:border-b-0 bg-black"
+      className="bg-neutral-950 border border-white/10 rounded-2xl overflow-hidden"
       data-testid={`row-habit-${habit.id}`}
     >
-      <div className="sticky left-0 z-10 bg-black w-40 shrink-0 px-3 py-3 flex items-center gap-1.5">
-        <button
-          onPointerDown={(e) => controls.start(e)}
-          data-testid={`handle-${habit.id}`}
-          className="touch-none shrink-0 text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing"
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="w-3.5 h-3.5" />
-        </button>
-
-        <span className="flex-1 text-sm font-medium truncate">{habit.name}</span>
-
-        <button
-        onClick={() => onDelete(habit.id)}
-        data-testid={`button-delete-${habit.id}`}
-        aria-label={`Delete ${habit.name}`}
-        className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
-      </div>
-
-      {days.map(({ dateStr, isFuture: futureFlag }) => {
-        const isChecked = !!completions[`${habit.id}-${dateStr}`];
-        return (
-          <div
-            key={dateStr}
-            className={`w-9 shrink-0 flex items-center justify-center py-3 ${futureFlag ? "opacity-25" : ""}`}
+      <div className="p-4">
+        {/* Card header */}
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onPointerDown={(e) => controls.start(e)}
+            data-testid={`handle-${habit.id}`}
+            className="touch-none shrink-0 text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing"
+            aria-label="Drag to reorder"
           >
-            <button
-              onClick={() => !futureFlag && onToggle(habit.id, dateStr)}
-              disabled={futureFlag}
-              data-testid={`checkbox-${habit.id}-${dateStr}`}
-              style={
-                isChecked
-                  ? { backgroundColor: habit.color, borderColor: habit.color }
-                  : {
-                      borderColor: "rgba(255,255,255,0.18)",
-                      backgroundColor: "transparent",
-                    }
-              }
-              className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
-                ${futureFlag ? "cursor-not-allowed" : "cursor-pointer active:scale-90"}`}
-            >
-              <AnimatePresence>
-                {isChecked && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 28 }}
-                  >
-                    <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </button>
-          </div>
-        );
-      })}
+            <GripVertical className="w-3.5 h-3.5" />
+          </button>
+          <span
+            className="h-2.5 w-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: habit.color }}
+          />
+          <span className="flex-1 text-sm font-medium truncate">
+            {habit.name}
+          </span>
+          <span className="text-xs text-white/30 tabular-nums">
+            {completed}/{days.length}
+          </span>
+          <button
+            onClick={() => onDelete(habit.id)}
+            data-testid={`button-delete-${habit.id}`}
+            aria-label={`Delete ${habit.name}`}
+            className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
-      <div className="w-16 shrink-0 px-2 py-3 flex items-center justify-end">
-        <span className="text-xs text-white/30 tabular-nums">
-          {completed}/{daysInMonth}
-        </span>
+        {/* Day grid — 10 columns, ~3 rows for a 30-day month */}
+        <div className="grid grid-cols-10 gap-1">
+          {days.map(
+            ({ day, dateStr, isToday: todayFlag, isFuture: futureFlag }) => {
+              const isChecked = !!completions[`${habit.id}-${dateStr}`];
+              return (
+                <div
+                  key={dateStr}
+                  className={`flex flex-col items-center gap-0.5 ${futureFlag ? "opacity-25" : ""}`}
+                >
+                  <span
+                    className={`text-[10px] font-medium w-5 h-5 flex items-center justify-center rounded-full
+                    ${todayFlag ? "bg-white/20 text-white" : "text-white/40"}`}
+                  >
+                    {day}
+                  </span>
+                  <button
+                    onClick={() =>
+                      !futureFlag && onToggle(habit.id, dateStr)
+                    }
+                    disabled={futureFlag}
+                    data-testid={`checkbox-${habit.id}-${dateStr}`}
+                    style={
+                      isChecked
+                        ? {
+                            backgroundColor: habit.color,
+                            borderColor: habit.color,
+                          }
+                        : {
+                            borderColor: "rgba(255,255,255,0.18)",
+                            backgroundColor: "transparent",
+                          }
+                    }
+                    className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
+                    ${futureFlag ? "cursor-not-allowed" : "cursor-pointer active:scale-90"}`}
+                  >
+                    <AnimatePresence>
+                      {isChecked && (
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 28,
+                          }}
+                        >
+                          <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                </div>
+              );
+            },
+          )}
+        </div>
       </div>
     </Reorder.Item>
   );
@@ -311,23 +333,6 @@ export default function Habito() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmDeleteHabit = habits.find((h) => h.id === confirmDeleteId);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Scroll so today's column sits at the right edge whenever the visible month
-  // is the current month. Runs after the grid renders and after load.
-  useEffect(() => {
-    if (!isLoaded) return;
-    const el = scrollRef.current;
-    if (!el) return;
-    const todayMonth = format(new Date(), "yyyy-MM");
-    if (currentMonth !== todayMonth) return;
-    const todayDay = new Date().getDate();
-    const DAY_W = 36;   // w-9
-    const STICKY_W = 160; // w-40 habit name column
-    const scrollTarget = todayDay * DAY_W - (el.clientWidth - STICKY_W);
-    el.scrollLeft = Math.max(0, scrollTarget);
-  }, [isLoaded, currentMonth]);
-
   const monthDate = useMemo(
     () => parseISO(`${currentMonth}-01`),
     [currentMonth],
@@ -445,37 +450,8 @@ export default function Habito() {
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-auto">
-        <div className="min-w-max">
-          <div className="sticky top-0 z-20 bg-black border-b border-white/10 flex">
-            <div className="sticky left-0 z-30 bg-black w-40 shrink-0 px-3 py-2 flex items-center">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30 pl-5">
-                Habit
-              </span>
-            </div>
-            {days.map(({ day, isToday: todayFlag, isFuture: futureFlag }) => (
-              <div
-                key={day}
-                className={`w-9 shrink-0 flex items-center justify-center py-2 ${futureFlag ? "opacity-30" : ""}`}
-              >
-                <span
-                  className="text-[11px] font-medium w-6 h-6 flex items-center justify-center rounded-full"
-                  style={
-                    todayFlag
-                      ? {
-                          backgroundColor: theme.accent,
-                          color: theme.accentForeground,
-                        }
-                      : { color: "rgba(255,255,255,0.4)" }
-                  }
-                >
-                  {day}
-                </span>
-              </div>
-            ))}
-            <div className="w-16 shrink-0" />
-          </div>
-
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-2xl mx-auto px-4 py-4">
           {habits.length === 0 ? (
             <div className="py-20 text-center text-white/30 px-6">
               <p className="text-sm">No habits yet.</p>
@@ -486,14 +462,13 @@ export default function Habito() {
               axis="y"
               values={habits}
               onReorder={reorderHabits}
-              className="outline-none"
+              className="flex flex-col gap-3 outline-none"
             >
               {habits.map((habit) => (
                 <HabitRow
                   key={habit.id}
                   habit={habit}
                   days={days}
-                  daysInMonth={daysInMonth}
                   completions={completions}
                   onDelete={setConfirmDeleteId}
                   onToggle={toggleCompletion}
