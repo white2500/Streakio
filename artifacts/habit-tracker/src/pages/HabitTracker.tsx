@@ -31,7 +31,7 @@ import { usePremium, useFeature } from "@/context/PremiumProvider";
 import { useTheme } from "@/context/ThemeProvider";
 import { PremiumBadge } from "@/components/PremiumBadge";
 import { AdBanner } from "@/components/AdBanner";
-import { exportAsJson, exportAsCsv } from "@/lib/exportData";
+import { exportAsJson, exportAsCsv, exportAsExcel } from "@/lib/exportData";
 import { THEMES } from "@/lib/themes";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -183,7 +183,7 @@ function SettingsMenu({
   onExport,
   habitsCount,
 }: {
-  onExport: (kind: "json" | "csv") => void;
+  onExport: (kind: "json" | "csv" | "xlsx") => void;
   habitsCount: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -291,6 +291,17 @@ function SettingsMenu({
             >
               <Download className="h-3.5 w-3.5" /> Export JSON
             </button>
+            <button
+              onClick={() => {
+                onExport("xlsx");
+                setOpen(false);
+              }}
+              disabled={habitsCount === 0}
+              data-testid="button-export-excel"
+              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export Excel
+            </button>
 
             <div className="my-1 border-t border-white/8" />
 
@@ -370,10 +381,11 @@ export default function Habito() {
     }
   };
 
-  const handleExport = (kind: "json" | "csv") => {
+  const handleExport = (kind: "json" | "csv" | "xlsx") => {
     if (!dataExport.ensure()) return;
     if (kind === "json") exportAsJson({ habits, completions });
-    else exportAsCsv({ habits, completions });
+    else if (kind === "csv") exportAsCsv({ habits, completions });
+    else exportAsExcel({ habits, completions }, currentMonth);
   };
 
   const handleAnalytics = () => {
