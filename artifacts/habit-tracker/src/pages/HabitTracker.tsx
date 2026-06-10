@@ -88,13 +88,17 @@ function HabitRow({
         <span className="flex-1 text-sm font-medium truncate">{habit.name}</span>
 
         <button
-          onClick={() => onDelete(habit.id)}
-          data-testid={`button-delete-${habit.id}`}
-          aria-label={`Delete ${habit.name}`}
-          className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+  onClick={() => {
+    if (window.confirm(`Delete "${habit.name}"?`)) {
+      onDelete(habit.id);
+    }
+  }}
+  data-testid={`button-delete-${habit.id}`}
+  aria-label={`Delete ${habit.name}`}
+  className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
+>
+  <Trash2 className="w-3.5 h-3.5" />
+</button>
       </div>
 
       {days.map(({ dateStr, isFuture: futureFlag }) => {
@@ -274,7 +278,7 @@ function SettingsMenu({
   );
 }
 
-export default function HabitTracker() {
+export default function Habito() {
   const {
     habits,
     completions,
@@ -357,7 +361,7 @@ export default function HabitTracker() {
       <header className="shrink-0 bg-black border-b border-white/10 px-4 pt-12 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">Habits</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Habito</h1>
             {isPremium ? (
               <PremiumBadge />
             ) : (
