@@ -381,14 +381,7 @@ export default function Habito() {
     setLocation("/analytics");
   };
 
-  if (!isLoaded)
-    return (
-      <div className="h-screen bg-black text-white flex items-center justify-center">
-        <span className="text-5xl font-bold tracking-tight text-white">
-          Habito
-        </span>
-      </div>
-    );
+  if (!isLoaded) return null;
 
   return (
     <div className="h-screen bg-black text-white flex flex-col font-sans select-none overflow-hidden">
@@ -398,7 +391,7 @@ export default function Habito() {
             <img
               src={`${basePath}/logo.svg`}
               alt="Habito"
-              className="h-7 w-7"
+              className="h-7 w-auto"
             />
             {isPremium ? (
               <PremiumBadge />
