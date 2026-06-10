@@ -319,7 +319,7 @@ function SettingsMenu({
   );
 }
 
-export default function Habito() {
+export default function Streakio() {
   const {
     habits,
     completions,
@@ -402,7 +402,7 @@ export default function Habito() {
           <div className="flex items-center gap-2">
             <img
               src={`${basePath}/logo.svg`}
-              alt="Habito"
+              alt="Streakio"
               className="h-7 w-auto"
             />
             {isPremium ? (

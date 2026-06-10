@@ -114,7 +114,7 @@ function LoadingScreen({ visible }: { visible: boolean }) {
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <span className="text-5xl font-bold tracking-tight text-white">
-            Habito
+            Streakio
           </span>
         </motion.div>
       )}

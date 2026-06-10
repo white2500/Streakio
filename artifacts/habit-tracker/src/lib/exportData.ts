@@ -85,7 +85,7 @@ export async function exportAsExcel(
   });
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Habito";
+  wb.creator = "Streakio";
   const ws = wb.addWorksheet("Habits");
 
   const TOTAL_COLS = 2 + daysInMonth; // col A = habit, cols B..B+days = days, last = total
@@ -99,7 +99,7 @@ export async function exportAsExcel(
   ws.views = [{ state: "frozen", xSplit: 1, ySplit: 3 }];
 
   // ── Row 1: App title ──────────────────────────────────────────────────────
-  const titleRow = ws.addRow(["Habito — " + monthLabel]);
+  const titleRow = ws.addRow(["Streakio — " + monthLabel]);
   ws.mergeCells(1, 1, 1, TOTAL_COLS);
   const titleCell = titleRow.getCell(1);
   titleCell.font = { bold: true, size: 14, color: { argb: FG_WHITE }, name: "Calibri" };
