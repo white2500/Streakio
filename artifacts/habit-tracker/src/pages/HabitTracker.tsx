@@ -385,7 +385,7 @@ export default function Habito() {
     if (!dataExport.ensure()) return;
     if (kind === "json") exportAsJson({ habits, completions });
     else if (kind === "csv") exportAsCsv({ habits, completions });
-    else exportAsExcel({ habits, completions }, currentMonth);
+    else void exportAsExcel({ habits, completions }, currentMonth);
   };
 
   const handleAnalytics = () => {
