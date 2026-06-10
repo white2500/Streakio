@@ -4,7 +4,14 @@ import { format } from 'date-fns';
 export interface Habit {
   id: string;
   name: string;
+  color: string;
 }
+
+const STORAGE_KEYS = {
+  habits: 'habits',
+  completions: 'completions',
+  currentMonth: 'currentMonth',
+} as const;
 
 export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -12,61 +19,51 @@ export function useHabits() {
   const [currentMonth, setCurrentMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
-      const storedHabits = localStorage.getItem('habits');
+      const storedHabits = localStorage.getItem(STORAGE_KEYS.habits);
       if (storedHabits) setHabits(JSON.parse(storedHabits));
 
-      const storedCompletions = localStorage.getItem('completions');
+      const storedCompletions = localStorage.getItem(STORAGE_KEYS.completions);
       if (storedCompletions) setCompletions(JSON.parse(storedCompletions));
 
-      const storedMonth = localStorage.getItem('currentMonth');
+      const storedMonth = localStorage.getItem(STORAGE_KEYS.currentMonth);
       if (storedMonth) setCurrentMonth(storedMonth);
-    } catch (error) {
-      console.error('Failed to load data from localStorage', error);
+    } catch {
+      // ignore parse errors
     }
     setIsLoaded(true);
   }, []);
 
-  // Save changes to localStorage
   useEffect(() => {
     if (!isLoaded) return;
-    localStorage.setItem('habits', JSON.stringify(habits));
-    localStorage.setItem('completions', JSON.stringify(completions));
-    localStorage.setItem('currentMonth', currentMonth);
+    localStorage.setItem(STORAGE_KEYS.habits, JSON.stringify(habits));
+    localStorage.setItem(STORAGE_KEYS.completions, JSON.stringify(completions));
+    localStorage.setItem(STORAGE_KEYS.currentMonth, currentMonth);
   }, [habits, completions, currentMonth, isLoaded]);
 
-  const addHabit = useCallback((name: string) => {
+  const addHabit = useCallback((name: string, color: string) => {
     if (!name.trim()) return;
-    const newHabit: Habit = {
-      id: crypto.randomUUID(),
-      name: name.trim(),
-    };
-    setHabits(prev => [...prev, newHabit]);
+    setHabits(prev => [
+      ...prev,
+      { id: crypto.randomUUID(), name: name.trim(), color },
+    ]);
   }, []);
 
   const deleteHabit = useCallback((habitId: string) => {
     setHabits(prev => prev.filter(h => h.id !== habitId));
-    
-    // Clean up completions for this habit
     setCompletions(prev => {
-      const newCompletions = { ...prev };
-      Object.keys(newCompletions).forEach(key => {
-        if (key.startsWith(`${habitId}-`)) {
-          delete newCompletions[key];
-        }
+      const next = { ...prev };
+      Object.keys(next).forEach(k => {
+        if (k.startsWith(`${habitId}-`)) delete next[k];
       });
-      return newCompletions;
+      return next;
     });
   }, []);
 
   const toggleCompletion = useCallback((habitId: string, dateStr: string) => {
     const key = `${habitId}-${dateStr}`;
-    setCompletions(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setCompletions(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
   return {
@@ -77,6 +74,6 @@ export function useHabits() {
     addHabit,
     deleteHabit,
     toggleCompletion,
-    isLoaded
+    isLoaded,
   };
 }
