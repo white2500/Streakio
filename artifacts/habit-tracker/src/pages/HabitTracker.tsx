@@ -88,17 +88,13 @@ function HabitRow({
         <span className="flex-1 text-sm font-medium truncate">{habit.name}</span>
 
         <button
-  onClick={() => {
-    if (window.confirm(`Delete "${habit.name}"?`)) {
-      onDelete(habit.id);
-    }
-  }}
-  data-testid={`button-delete-${habit.id}`}
-  aria-label={`Delete ${habit.name}`}
-  className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
->
-  <Trash2 className="w-3.5 h-3.5" />
-</button>
+        onClick={() => onDelete(habit.id)}
+        data-testid={`button-delete-${habit.id}`}
+        aria-label={`Delete ${habit.name}`}
+        className="shrink-0 text-white/20 hover:text-white/60 transition-colors"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
       </div>
 
       {days.map(({ dateStr, isFuture: futureFlag }) => {
@@ -300,6 +296,8 @@ export default function Habito() {
   const [newHabitName, setNewHabitName] = useState("");
   const [selectedColor, setSelectedColor] = useState(PALETTE[0]);
   const [showForm, setShowForm] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const confirmDeleteHabit = habits.find((h) => h.id === confirmDeleteId);
 
   const monthDate = useMemo(
     () => parseISO(`${currentMonth}-01`),
@@ -462,7 +460,7 @@ export default function Habito() {
                   days={days}
                   daysInMonth={daysInMonth}
                   completions={completions}
-                  onDelete={deleteHabit}
+                  onDelete={setConfirmDeleteId}
                   onToggle={toggleCompletion}
                 />
               ))}
@@ -472,6 +470,62 @@ export default function Habito() {
       </div>
 
       <AdBanner />
+
+      {/* Delete confirmation dialog */}
+      <AnimatePresence>
+        {confirmDeleteId && confirmDeleteHabit && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setConfirmDeleteId(null)}
+          >
+            <motion.div
+              className="w-full max-w-sm rounded-2xl bg-neutral-950 border border-white/10 p-6 text-white"
+              initial={{ y: 20, opacity: 0, scale: 0.98 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 340, damping: 30 }}
+              onClick={(e) => e.stopPropagation()}
+              data-testid="dialog-confirm-delete"
+            >
+              <div className="flex items-center gap-3 mb-1">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: confirmDeleteHabit.color }}
+                />
+                <h3 className="text-base font-semibold tracking-tight truncate">
+                  {confirmDeleteHabit.name}
+                </h3>
+              </div>
+              <p className="mt-2 text-sm text-white/50">
+                Delete this habit? All tracked days will be lost and this cannot
+                be undone.
+              </p>
+              <div className="mt-5 flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    deleteHabit(confirmDeleteId);
+                    setConfirmDeleteId(null);
+                  }}
+                  data-testid="button-confirm-delete"
+                  className="w-full rounded-xl bg-red-500/15 border border-red-500/25 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/20 active:scale-[.98] transition-all"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  data-testid="button-cancel-delete"
+                  className="w-full rounded-xl py-2.5 text-sm font-medium text-white/45 hover:text-white/70 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="shrink-0 bg-black border-t border-white/10 px-4 pt-3 pb-8">
         <AnimatePresence>

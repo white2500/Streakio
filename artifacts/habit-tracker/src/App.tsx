@@ -5,6 +5,7 @@ import {
   SignUp,
   Show,
   useClerk,
+  useAuth,
 } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
@@ -100,6 +101,46 @@ const clerkAppearance = {
     main: "gap-5",
   },
 };
+
+function LoadingScreen() {
+  return (
+    <div className="fixed inset-0 bg-black flex items-center justify-center">
+      <span className="text-2xl font-semibold tracking-tight text-white">
+        Habito
+      </span>
+    </div>
+  );
+}
+
+function AppShell() {
+  const { isLoaded } = useAuth();
+
+  if (!isLoaded) return <LoadingScreen />;
+
+  return (
+    <Switch>
+      <Route path="/" component={HomeRedirect} />
+      <Route path="/sign-in/*?" component={SignInPage} />
+      <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/app">
+        <SignedInOnly>
+          <HabitTracker />
+        </SignedInOnly>
+      </Route>
+      <Route path="/upgrade">
+        <SignedInOnly>
+          <Upgrade />
+        </SignedInOnly>
+      </Route>
+      <Route path="/analytics">
+        <SignedInOnly>
+          <Analytics />
+        </SignedInOnly>
+      </Route>
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
 
 function SignInPage() {
   return (
@@ -203,27 +244,7 @@ function ClerkProviderWithRoutes() {
         <PremiumProvider>
           <ThemeProvider>
             <TooltipProvider>
-              <Switch>
-                <Route path="/" component={HomeRedirect} />
-                <Route path="/sign-in/*?" component={SignInPage} />
-                <Route path="/sign-up/*?" component={SignUpPage} />
-                <Route path="/app">
-                  <SignedInOnly>
-                    <HabitTracker />
-                  </SignedInOnly>
-                </Route>
-                <Route path="/upgrade">
-                  <SignedInOnly>
-                    <Upgrade />
-                  </SignedInOnly>
-                </Route>
-                <Route path="/analytics">
-                  <SignedInOnly>
-                    <Analytics />
-                  </SignedInOnly>
-                </Route>
-                <Route component={NotFound} />
-              </Switch>
+              <AppShell />
               <Toaster />
             </TooltipProvider>
           </ThemeProvider>
