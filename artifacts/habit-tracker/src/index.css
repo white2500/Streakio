@@ -1,4 +1,6 @@
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
+@import "@clerk/themes/shadcn.css";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
@@ -293,4 +295,13 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+}
+
+/* Clerk pseudo-states (must live outside @layer) */
+.cl-formFieldInput::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  opacity: 1;
+}
+.cl-formFieldInput:focus {
+  border-color: rgba(255, 255, 255, 0.4);
 }

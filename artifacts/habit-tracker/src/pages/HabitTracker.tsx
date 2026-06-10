@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   format,
   addMonths,
@@ -7,23 +7,46 @@ import {
   isToday,
   isFuture,
   parseISO,
-} from 'date-fns';
-import { Reorder, useDragControls, AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, GripVertical } from 'lucide-react';
-import { useHabits, type Habit } from '@/hooks/useHabits';
+} from "date-fns";
+import { Reorder, useDragControls, AnimatePresence, motion } from "framer-motion";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Check,
+  GripVertical,
+  BarChart3,
+  Settings,
+  Download,
+  Palette,
+  LogOut,
+  Sparkles,
+  Cloud,
+} from "lucide-react";
+import { useLocation } from "wouter";
+import { useClerk } from "@clerk/react";
+import { useHabits, type Habit } from "@/hooks/useHabits";
+import { usePremium, useFeature } from "@/context/PremiumProvider";
+import { useTheme } from "@/context/ThemeProvider";
+import { PremiumBadge } from "@/components/PremiumBadge";
+import { AdBanner } from "@/components/AdBanner";
+import { exportAsJson, exportAsCsv } from "@/lib/exportData";
+import { THEMES } from "@/lib/themes";
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const PALETTE = [
-  '#ef4444',
-  '#f97316',
-  '#eab308',
-  '#22c55e',
-  '#06b6d4',
-  '#3b82f6',
-  '#8b5cf6',
-  '#ec4899',
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
 ];
 
-/* ── per-row component so each row gets its own drag controls ── */
 function HabitRow({
   habit,
   days,
@@ -40,7 +63,9 @@ function HabitRow({
   onToggle: (id: string, dateStr: string) => void;
 }) {
   const controls = useDragControls();
-  const completed = days.filter(d => completions[`${habit.id}-${d.dateStr}`]).length;
+  const completed = days.filter(
+    (d) => completions[`${habit.id}-${d.dateStr}`],
+  ).length;
 
   return (
     <Reorder.Item
@@ -50,11 +75,9 @@ function HabitRow({
       className="flex items-center border-b border-white/6 last:border-b-0 bg-black"
       data-testid={`row-habit-${habit.id}`}
     >
-      {/* Sticky name cell */}
       <div className="sticky left-0 z-10 bg-black w-40 shrink-0 px-3 py-3 flex items-center gap-1.5">
-        {/* Drag handle */}
         <button
-          onPointerDown={e => controls.start(e)}
+          onPointerDown={(e) => controls.start(e)}
           data-testid={`handle-${habit.id}`}
           className="touch-none shrink-0 text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing"
           aria-label="Drag to reorder"
@@ -74,13 +97,12 @@ function HabitRow({
         </button>
       </div>
 
-      {/* Checkboxes */}
       {days.map(({ dateStr, isFuture: futureFlag }) => {
         const isChecked = !!completions[`${habit.id}-${dateStr}`];
         return (
           <div
             key={dateStr}
-            className={`w-9 shrink-0 flex items-center justify-center py-3 ${futureFlag ? 'opacity-25' : ''}`}
+            className={`w-9 shrink-0 flex items-center justify-center py-3 ${futureFlag ? "opacity-25" : ""}`}
           >
             <button
               onClick={() => !futureFlag && onToggle(habit.id, dateStr)}
@@ -89,10 +111,13 @@ function HabitRow({
               style={
                 isChecked
                   ? { backgroundColor: habit.color, borderColor: habit.color }
-                  : { borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'transparent' }
+                  : {
+                      borderColor: "rgba(255,255,255,0.18)",
+                      backgroundColor: "transparent",
+                    }
               }
               className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
-                ${futureFlag ? 'cursor-not-allowed' : 'cursor-pointer active:scale-90'}`}
+                ${futureFlag ? "cursor-not-allowed" : "cursor-pointer active:scale-90"}`}
             >
               <AnimatePresence>
                 {isChecked && (
@@ -100,7 +125,7 @@ function HabitRow({
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 28 }}
                   >
                     <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
                   </motion.div>
@@ -111,7 +136,6 @@ function HabitRow({
         );
       })}
 
-      {/* Progress */}
       <div className="w-16 shrink-0 px-2 py-3 flex items-center justify-end">
         <span className="text-xs text-white/30 tabular-nums">
           {completed}/{daysInMonth}
@@ -121,7 +145,135 @@ function HabitRow({
   );
 }
 
-/* ── main page ── */
+function SettingsMenu({
+  onExport,
+  habitsCount,
+}: {
+  onExport: (kind: "json" | "csv") => void;
+  habitsCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const { isPremium } = usePremium();
+  const { signOut } = useClerk();
+  const { themeId, setTheme } = useTheme();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        data-testid="button-settings"
+        aria-label="Settings"
+        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 transition-colors"
+      >
+        <Settings className="w-4 h-4 text-white/60" />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-10 z-50 w-60 rounded-xl border border-white/10 bg-neutral-950 p-2 shadow-xl"
+            data-testid="menu-settings"
+          >
+            <div className="px-2 py-1.5 flex items-center gap-1.5 text-[11px] text-white/40">
+              {isPremium ? (
+                <>
+                  <Cloud className="h-3 w-3" /> Synced across devices
+                </>
+              ) : (
+                "Stored on this device"
+              )}
+            </div>
+
+            <div className="my-1 border-t border-white/8" />
+
+            <div className="px-2 py-1.5">
+              <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-white/35">
+                <Palette className="h-3 w-3" /> Theme
+              </div>
+              <div className="flex items-center gap-2">
+                {THEMES.map((t) => {
+                  const locked = t.premium && !isPremium;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id)}
+                      data-testid={`theme-${t.id}`}
+                      title={t.name + (locked ? " (Premium)" : "")}
+                      style={{ backgroundColor: t.accent }}
+                      className={`relative h-6 w-6 rounded-full transition-transform ${
+                        themeId === t.id
+                          ? "ring-2 ring-offset-2 ring-offset-neutral-950 ring-white/50 scale-110"
+                          : "opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      {locked && (
+                        <span className="absolute -right-1 -top-1 text-[8px]">
+                          <Sparkles className="h-2.5 w-2.5 text-white" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="my-1 border-t border-white/8" />
+
+            <button
+              onClick={() => {
+                onExport("csv");
+                setOpen(false);
+              }}
+              disabled={habitsCount === 0}
+              data-testid="button-export-csv"
+              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </button>
+            <button
+              onClick={() => {
+                onExport("json");
+                setOpen(false);
+              }}
+              disabled={habitsCount === 0}
+              data-testid="button-export-json"
+              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export JSON
+            </button>
+
+            <div className="my-1 border-t border-white/8" />
+
+            <button
+              onClick={() => signOut({ redirectUrl: basePath || "/" })}
+              data-testid="button-sign-out"
+              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Sign out
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function HabitTracker() {
   const {
     habits,
@@ -135,91 +287,150 @@ export default function HabitTracker() {
     isLoaded,
   } = useHabits();
 
-  const [newHabitName, setNewHabitName] = useState('');
+  const [, setLocation] = useLocation();
+  const { isPremium } = usePremium();
+  const analytics = useFeature("advancedAnalytics");
+  const dataExport = useFeature("dataExport");
+  const { theme } = useTheme();
+
+  const [newHabitName, setNewHabitName] = useState("");
   const [selectedColor, setSelectedColor] = useState(PALETTE[0]);
   const [showForm, setShowForm] = useState(false);
 
-  const monthDate = useMemo(() => parseISO(`${currentMonth}-01`), [currentMonth]);
+  const monthDate = useMemo(
+    () => parseISO(`${currentMonth}-01`),
+    [currentMonth],
+  );
   const daysInMonth = useMemo(() => getDaysInMonth(monthDate), [monthDate]);
 
-  const days = useMemo(() =>
-    Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
-      const dateStr = `${currentMonth}-${day.toString().padStart(2, '0')}`;
-      const dateObj = parseISO(dateStr);
-      return { day, dateStr, isToday: isToday(dateObj), isFuture: isFuture(dateObj) };
-    }),
-    [daysInMonth, currentMonth]
+  const days = useMemo(
+    () =>
+      Array.from({ length: daysInMonth }, (_, i) => {
+        const day = i + 1;
+        const dateStr = `${currentMonth}-${day.toString().padStart(2, "0")}`;
+        const dateObj = parseISO(dateStr);
+        return {
+          day,
+          dateStr,
+          isToday: isToday(dateObj),
+          isFuture: isFuture(dateObj),
+        };
+      }),
+    [daysInMonth, currentMonth],
   );
 
-  const handlePrevMonth = () => setCurrentMonth(format(subMonths(monthDate, 1), 'yyyy-MM'));
-  const handleNextMonth = () => setCurrentMonth(format(addMonths(monthDate, 1), 'yyyy-MM'));
+  const handlePrevMonth = () =>
+    setCurrentMonth(format(subMonths(monthDate, 1), "yyyy-MM"));
+  const handleNextMonth = () =>
+    setCurrentMonth(format(addMonths(monthDate, 1), "yyyy-MM"));
 
   const handleAddHabit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newHabitName.trim()) {
       addHabit(newHabitName, selectedColor);
-      setNewHabitName('');
+      setNewHabitName("");
       setSelectedColor(PALETTE[0]);
       setShowForm(false);
     }
   };
 
-  if (!isLoaded) return null;
+  const handleExport = (kind: "json" | "csv") => {
+    if (!dataExport.ensure()) return;
+    if (kind === "json") exportAsJson({ habits, completions });
+    else exportAsCsv({ habits, completions });
+  };
+
+  const handleAnalytics = () => {
+    if (!analytics.ensure()) return;
+    setLocation("/analytics");
+  };
+
+  if (!isLoaded)
+    return (
+      <div className="h-screen bg-black text-white flex items-center justify-center">
+        <span className="text-sm text-white/30">Loading...</span>
+      </div>
+    );
 
   return (
     <div className="h-screen bg-black text-white flex flex-col font-sans select-none overflow-hidden">
-
-      {/* ── App header (fixed height, full width) ── */}
       <header className="shrink-0 bg-black border-b border-white/10 px-4 pt-12 pb-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">Habits</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight">Habits</h1>
+            {isPremium ? (
+              <PremiumBadge />
+            ) : (
+              <button
+                onClick={() => setLocation("/upgrade")}
+                data-testid="button-upgrade"
+                className="inline-flex items-center gap-1 rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/60 hover:text-white hover:border-white/30 transition-colors"
+              >
+                <Sparkles className="h-2.5 w-2.5" />
+                Upgrade
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={handlePrevMonth}
-              data-testid="button-prev-month"
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 active:bg-white/12 transition-colors"
+              onClick={handleAnalytics}
+              data-testid="button-analytics"
+              aria-label="Analytics"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 transition-colors"
             >
-              <ChevronLeft className="w-4 h-4 text-white/50" />
+              <BarChart3 className="w-4 h-4 text-white/60" />
             </button>
-            <span
-              className="text-sm font-medium text-white/60 w-28 text-center"
-              data-testid="text-current-month"
-            >
-              {format(monthDate, 'MMMM yyyy')}
-            </span>
-            <button
-              onClick={handleNextMonth}
-              data-testid="button-next-month"
-              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 active:bg-white/12 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4 text-white/50" />
-            </button>
+            <SettingsMenu onExport={handleExport} habitsCount={habits.length} />
           </div>
+        </div>
+
+        <div className="mt-3 flex items-center justify-center gap-1">
+          <button
+            onClick={handlePrevMonth}
+            data-testid="button-prev-month"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 active:bg-white/12 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4 text-white/50" />
+          </button>
+          <span
+            className="text-sm font-medium text-white/60 w-32 text-center"
+            data-testid="text-current-month"
+          >
+            {format(monthDate, "MMMM yyyy")}
+          </span>
+          <button
+            onClick={handleNextMonth}
+            data-testid="button-next-month"
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 active:bg-white/12 transition-colors"
+          >
+            <ChevronRight className="w-4 h-4 text-white/50" />
+          </button>
         </div>
       </header>
 
-      {/* ── Scrollable grid (single container, scrolls both X and Y) ── */}
       <div className="flex-1 overflow-auto">
         <div className="min-w-max">
-
-          {/* Day header — sticky to top of scroll container */}
           <div className="sticky top-0 z-20 bg-black border-b border-white/10 flex">
-            {/* Corner cell — also sticky left */}
             <div className="sticky left-0 z-30 bg-black w-40 shrink-0 px-3 py-2 flex items-center">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30 pl-5">
                 Habit
               </span>
             </div>
-            {/* Day numbers */}
             {days.map(({ day, isToday: todayFlag, isFuture: futureFlag }) => (
               <div
                 key={day}
-                className={`w-9 shrink-0 flex items-center justify-center py-2 ${futureFlag ? 'opacity-30' : ''}`}
+                className={`w-9 shrink-0 flex items-center justify-center py-2 ${futureFlag ? "opacity-30" : ""}`}
               >
                 <span
-                  className={`text-[11px] font-medium w-6 h-6 flex items-center justify-center rounded-full
-                    ${todayFlag ? 'bg-white text-black' : 'text-white/40'}`}
+                  className="text-[11px] font-medium w-6 h-6 flex items-center justify-center rounded-full"
+                  style={
+                    todayFlag
+                      ? {
+                          backgroundColor: theme.accent,
+                          color: theme.accentForeground,
+                        }
+                      : { color: "rgba(255,255,255,0.4)" }
+                  }
                 >
                   {day}
                 </span>
@@ -228,7 +439,6 @@ export default function HabitTracker() {
             <div className="w-16 shrink-0" />
           </div>
 
-          {/* Habit rows */}
           {habits.length === 0 ? (
             <div className="py-20 text-center text-white/30 px-6">
               <p className="text-sm">No habits yet.</p>
@@ -241,7 +451,7 @@ export default function HabitTracker() {
               onReorder={reorderHabits}
               className="outline-none"
             >
-              {habits.map(habit => (
+              {habits.map((habit) => (
                 <HabitRow
                   key={habit.id}
                   habit={habit}
@@ -257,7 +467,8 @@ export default function HabitTracker() {
         </div>
       </div>
 
-      {/* ── Bottom bar (fixed height, full width) ── */}
+      <AdBanner />
+
       <div className="shrink-0 bg-black border-t border-white/10 px-4 pt-3 pb-8">
         <AnimatePresence>
           {showForm && (
@@ -272,15 +483,15 @@ export default function HabitTracker() {
                 <input
                   autoFocus
                   value={newHabitName}
-                  onChange={e => setNewHabitName(e.target.value)}
-                  onKeyDown={e => e.key === 'Escape' && setShowForm(false)}
+                  onChange={(e) => setNewHabitName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Escape" && setShowForm(false)}
                   placeholder="Habit name..."
                   data-testid="input-new-habit"
                   className="w-full text-sm px-3 py-2.5 rounded-lg border border-white/15 bg-white/8 text-white placeholder:text-white/30 outline-none focus:border-white/40 transition-colors"
                 />
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-white/40 mr-1">Color</span>
-                  {PALETTE.map(color => (
+                  {PALETTE.map((color) => (
                     <button
                       key={color}
                       type="button"
@@ -289,8 +500,8 @@ export default function HabitTracker() {
                       style={{ backgroundColor: color }}
                       className={`w-6 h-6 rounded-full transition-transform ${
                         selectedColor === color
-                          ? 'scale-125 ring-2 ring-offset-2 ring-offset-black ring-white/30'
-                          : 'opacity-60 hover:opacity-100 hover:scale-110'
+                          ? "scale-125 ring-2 ring-offset-2 ring-offset-black ring-white/30"
+                          : "opacity-60 hover:opacity-100 hover:scale-110"
                       }`}
                     />
                   ))}
@@ -307,7 +518,11 @@ export default function HabitTracker() {
                     type="submit"
                     disabled={!newHabitName.trim()}
                     data-testid="button-add-habit"
-                    className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-white text-black disabled:opacity-30 transition-opacity"
+                    style={{
+                      backgroundColor: theme.accent,
+                      color: theme.accentForeground,
+                    }}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium disabled:opacity-30 transition-opacity"
                   >
                     Add Habit
                   </button>
@@ -321,7 +536,11 @@ export default function HabitTracker() {
           <button
             onClick={() => setShowForm(true)}
             data-testid="button-show-form"
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white text-black text-sm font-medium active:scale-[.98] transition-transform"
+            style={{
+              backgroundColor: theme.accent,
+              color: theme.accentForeground,
+            }}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium active:scale-[.98] transition-transform"
           >
             <Plus className="w-4 h-4" />
             Add Habit

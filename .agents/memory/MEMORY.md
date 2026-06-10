@@ -1,0 +1,1 @@
+- [Habit tracker monetization](habit-tracker-monetization.md) — free=localStorage+ad, premium=cloud sync; all users sign in (Clerk), entitlement is server-side per userId; purchase simulated, Stripe-ready.

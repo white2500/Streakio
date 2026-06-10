@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: entitlement
+    description: Premium entitlement operations
+  - name: habits
+    description: Habit operations
+  - name: completions
+    description: Habit completion operations
+  - name: sync
+    description: Cloud sync operations
 paths:
   /healthz:
     get:
@@ -24,6 +32,168 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /me/entitlement:
+    get:
+      operationId: getEntitlement
+      tags: [entitlement]
+      summary: Get the current user's premium entitlement
+      responses:
+        "200":
+          description: Entitlement status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entitlement"
+  /me/entitlement/purchase:
+    post:
+      operationId: purchaseLifetime
+      tags: [entitlement]
+      summary: Grant a lifetime premium entitlement (simulated purchase)
+      responses:
+        "200":
+          description: Entitlement granted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entitlement"
+  /habits:
+    get:
+      operationId: listHabits
+      tags: [habits]
+      summary: List the current user's habits
+      responses:
+        "200":
+          description: Habit list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Habit"
+    post:
+      operationId: createHabit
+      tags: [habits]
+      summary: Create a habit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+  /habits/reorder:
+    post:
+      operationId: reorderHabits
+      tags: [habits]
+      summary: Reorder habits by id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitReorder"
+      responses:
+        "200":
+          description: Reordered habit list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Habit"
+  /habits/{id}:
+    patch:
+      operationId: updateHabit
+      tags: [habits]
+      summary: Update a habit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HabitUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Habit"
+    delete:
+      operationId: deleteHabit
+      tags: [habits]
+      summary: Delete a habit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+  /completions:
+    get:
+      operationId: listCompletions
+      tags: [completions]
+      summary: List the current user's habit completions
+      responses:
+        "200":
+          description: Completion list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Completion"
+  /completions/toggle:
+    post:
+      operationId: toggleCompletion
+      tags: [completions]
+      summary: Toggle a habit completion for a date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompletionToggle"
+      responses:
+        "200":
+          description: Toggle result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToggleResult"
+  /sync/import:
+    post:
+      operationId: importState
+      tags: [sync]
+      summary: Import local habits and completions into the cloud (on upgrade)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncImport"
+      responses:
+        "200":
+          description: Imported cloud state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncState"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +203,118 @@ components:
           type: string
       required:
         - status
-
+    Entitlement:
+      type: object
+      required: [premium]
+      properties:
+        premium:
+          type: boolean
+        tier:
+          type: ["string", "null"]
+        source:
+          type: ["string", "null"]
+        grantedAt:
+          type: ["string", "null"]
+    Habit:
+      type: object
+      required: [id, name, color, position]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        position:
+          type: integer
+    HabitInput:
+      type: object
+      required: [name, color]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        color:
+          type: string
+          minLength: 1
+    HabitUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        color:
+          type: string
+          minLength: 1
+        position:
+          type: integer
+    HabitReorder:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+    Completion:
+      type: object
+      required: [habitId, date]
+      properties:
+        habitId:
+          type: string
+        date:
+          type: string
+    CompletionToggle:
+      type: object
+      required: [habitId, date]
+      properties:
+        habitId:
+          type: string
+        date:
+          type: string
+    ToggleResult:
+      type: object
+      required: [habitId, date, completed]
+      properties:
+        habitId:
+          type: string
+        date:
+          type: string
+        completed:
+          type: boolean
+    HabitImport:
+      type: object
+      required: [id, name, color, position]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        position:
+          type: integer
+    SyncImport:
+      type: object
+      required: [habits, completions]
+      properties:
+        habits:
+          type: array
+          items:
+            $ref: "#/components/schemas/HabitImport"
+        completions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Completion"
+    SyncState:
+      type: object
+      required: [habits, completions]
+      properties:
+        habits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Habit"
+        completions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Completion"
