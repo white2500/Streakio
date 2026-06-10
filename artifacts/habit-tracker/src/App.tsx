@@ -105,11 +105,9 @@ const clerkAppearance = {
 function LoadingScreen() {
   return (
     <div className="fixed inset-0 bg-black flex items-center justify-center">
-      <div className="h-40 w-40 rounded-[32px] bg-neutral-950 border border-white/10 flex items-center justify-center">
-        <span className="text-3xl font-bold tracking-tight text-white">
-          Habito
-        </span>
-      </div>
+      <span className="text-5xl font-bold tracking-tight text-white">
+        Habito
+      </span>
     </div>
   );
 }
