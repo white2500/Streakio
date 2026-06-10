@@ -1,34 +1,60 @@
 {
+  "id": "streakio-habit-tracker",
   "name": "Streakio",
   "short_name": "Streakio",
   "description": "Track your habits every single day.",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/app/",
+  "scope": "/app/",
   "display": "standalone",
-  "background_color": "#0A0A0A",
   "theme_color": "#0A0A0A",
+  "background_color": "#0A0A0A",
   "orientation": "portrait-primary",
+  "lang": "en",
+  "dir": "ltr",
   "categories": ["productivity", "lifestyle"],
   "icons": [
     {
-      "src": "./icon-192.png",
+      "src": "/app/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "/app/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./maskable-512.png",
+      "src": "/app/maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
   ],
-  "screenshots": [],
-  "lang": "en"
+  "screenshots": [
+    {
+      "src": "/app/screenshots/screenshot-1.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Landing page"
+    },
+    {
+      "src": "/app/screenshots/screenshot-2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop landing page"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Track today",
+      "short_name": "Track",
+      "description": "Open the habit tracker",
+      "url": "/app/",
+      "icons": [{ "src": "/app/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

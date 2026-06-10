@@ -35,8 +35,16 @@ export default defineConfig({
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "apple-touch-icon.png", "icon-192.png", "icon-512.png", "maskable-512.png"],
+      includeAssets: [
+        "favicon.svg",
+        "apple-touch-icon.png",
+        "icon-192.png",
+        "icon-512.png",
+        "maskable-512.png",
+        "screenshots/*.png",
+      ],
       manifest: {
+        id: "streakio-habit-tracker",
         name: "Streakio",
         short_name: "Streakio",
         description: "Track your habits every single day.",
@@ -44,6 +52,8 @@ export default defineConfig({
         background_color: "#0A0A0A",
         display: "standalone",
         orientation: "portrait-primary",
+        lang: "en",
+        dir: "ltr",
         categories: ["productivity", "lifestyle"],
         icons: [
           {
@@ -65,18 +75,49 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        screenshots: [
+          {
+            src: "screenshots/screenshot-1.png",
+            sizes: "390x844",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Landing page",
+          },
+          {
+            src: "screenshots/screenshot-2.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Desktop landing page",
+          },
+        ],
+        shortcuts: [
+          {
+            name: "Track today",
+            short_name: "Track",
+            description: "Open the habit tracker",
+            url: "/app/",
+            icons: [{ src: "icon-192.png", sizes: "192x192" }],
+          },
+        ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: [
+          "**/*.{js,css,html,ico,png,svg,woff2,webmanifest}",
+        ],
+        globIgnores: ["**/*.map"],
         navigateFallback: "index.html",
-        navigateFallbackAllowlist: [/^(?!\/(api|clerk))/],
+        navigateFallbackAllowlist: [new RegExp("^(?!\/(api|clerk))")],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
             options: {
               cacheName: "google-fonts-cache",
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
@@ -85,7 +126,10 @@ export default defineConfig({
             handler: "CacheFirst",
             options: {
               cacheName: "gstatic-fonts-cache",
-              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
@@ -112,7 +156,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
-      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
+      "@assets": path.resolve(
+        import.meta.dirname,
+        "..",
+        "..",
+        "attached_assets",
+      ),
     },
     dedupe: ["react", "react-dom"],
   },
