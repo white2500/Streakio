@@ -45,6 +45,18 @@ const PALETTE = [
   "#3b82f6",
   "#8b5cf6",
   "#ec4899",
+  "#f43f5e",
+  "#fb923c",
+  "#84cc16",
+  "#14b8a6",
+  "#0ea5e9",
+  "#6366f1",
+  "#a855f7",
+  "#d946ef",
+  "#f59e0b",
+  "#10b981",
+  "#64748b",
+  "#94a3b8",
 ];
 
 function HabitRow({
@@ -361,7 +373,11 @@ export default function Habito() {
       <header className="shrink-0 bg-black border-b border-white/10 px-4 pt-12 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">Habito</h1>
+            <img
+              src={`${basePath}/logo.svg`}
+              alt="Habito"
+              className="h-7 w-7"
+            />
             {isPremium ? (
               <PremiumBadge />
             ) : (

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ClerkProvider,
   SignIn,
@@ -102,43 +103,53 @@ const clerkAppearance = {
   },
 };
 
-function LoadingScreen() {
+function LoadingScreen({ visible }: { visible: boolean }) {
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center">
-      <span className="text-5xl font-bold tracking-tight text-white">
-        Habito
-      </span>
-    </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          className="fixed inset-0 bg-black flex items-center justify-center z-50"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          <span className="text-5xl font-bold tracking-tight text-white">
+            Habito
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
 function AppShell() {
   const { isLoaded } = useAuth();
 
-  if (!isLoaded) return <LoadingScreen />;
-
   return (
-    <Switch>
-      <Route path="/" component={HomeRedirect} />
-      <Route path="/sign-in/*?" component={SignInPage} />
-      <Route path="/sign-up/*?" component={SignUpPage} />
-      <Route path="/app">
-        <SignedInOnly>
-          <HabitTracker />
-        </SignedInOnly>
-      </Route>
-      <Route path="/upgrade">
-        <SignedInOnly>
-          <Upgrade />
-        </SignedInOnly>
-      </Route>
-      <Route path="/analytics">
-        <SignedInOnly>
-          <Analytics />
-        </SignedInOnly>
-      </Route>
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <LoadingScreen visible={!isLoaded} />
+      <Switch>
+        <Route path="/" component={HomeRedirect} />
+        <Route path="/sign-in/*?" component={SignInPage} />
+        <Route path="/sign-up/*?" component={SignUpPage} />
+        <Route path="/app">
+          <SignedInOnly>
+            <HabitTracker />
+          </SignedInOnly>
+        </Route>
+        <Route path="/upgrade">
+          <SignedInOnly>
+            <Upgrade />
+          </SignedInOnly>
+        </Route>
+        <Route path="/analytics">
+          <SignedInOnly>
+            <Analytics />
+          </SignedInOnly>
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
+    </>
   );
 }
 

@@ -12,8 +12,7 @@ export default function Landing() {
     <div className="min-h-[100dvh] bg-black text-white flex flex-col">
       <header className="flex items-center justify-between px-5 pt-6">
         <div className="flex items-center gap-2">
-          <img src={`${basePath}/logo.svg`} alt="" className="h-7 w-7" />
-          <span className="text-sm font-semibold tracking-tight">Habito</span>
+          <img src={`${basePath}/logo.svg`} alt="Habito" className="h-7 w-7" />
         </div>
         <button
           onClick={() => setLocation("/sign-in")}
