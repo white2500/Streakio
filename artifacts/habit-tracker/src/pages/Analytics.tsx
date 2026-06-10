@@ -151,7 +151,11 @@ export default function Analytics() {
 
       <main className="flex-1 overflow-auto px-4 pb-10">
         {!isLoaded ? (
-          <div className="py-20 text-center text-white/30 text-sm">Loading...</div>
+          <div className="py-20 text-center">
+            <span className="text-5xl font-bold tracking-tight text-white">
+              Habito
+            </span>
+          </div>
         ) : habits.length === 0 ? (
           <div className="py-20 text-center text-white/30 text-sm">
             Add habits to see your analytics.

@@ -350,7 +350,9 @@ export default function Habito() {
   if (!isLoaded)
     return (
       <div className="h-screen bg-black text-white flex items-center justify-center">
-        <span className="text-sm text-white/30">Loading...</span>
+        <span className="text-5xl font-bold tracking-tight text-white">
+          Habito
+        </span>
       </div>
     );
 
