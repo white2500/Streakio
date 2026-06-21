@@ -184,6 +184,15 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        // Preserve cookies so Clerk session tokens reach the backend
+        cookieDomainRewrite: "",
+        cookiePathRewrite: true,
+      },
+    },
     fs: {
       strict: true,
     },

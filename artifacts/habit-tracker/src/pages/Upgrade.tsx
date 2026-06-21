@@ -23,8 +23,10 @@ export default function Upgrade() {
           : "Premium is active. Your habits are still safe on this device, but couldn't sync to the cloud just yet.",
       });
       setLocation("/app");
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      console.error("Purchase failed:", err);
+      const message = err?.message || "Something went wrong. Please try again.";
+      setError(message);
     }
   };
 
