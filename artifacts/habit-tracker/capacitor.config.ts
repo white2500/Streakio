@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: "Streakio",
   webDir: "dist/public",
   server: {
-    androidScheme: "https",
-    allowNavigation: ["habit-tracker-monthly.replit.app"],
+    url: "https://habit-tracker-monthly.replit.app",
+    cleartext: false,
   },
   android: {
     backgroundColor: "#0A0A0A",
