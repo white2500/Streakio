@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.replit.habit_tracker_monthly.twa",
+        "sha256_cert_fingerprints": ["FB:B4:CC:F6:06:11:6E:D8:E0:D3:04:07:10:AE:2B:9D:2A:E0:A5:51:26:02:0E:81:1B:88:30:04:C4:F5:D0:C8"]
+      }
+    }]
