@@ -43,6 +43,8 @@ jobs:
         env:
           PORT: "3000"
           BASE_PATH: "/"
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CLERK_PROXY_URL: ${{ secrets.VITE_CLERK_PROXY_URL }}
 
       - name: Sync Capacitor
         working-directory: artifacts/habit-tracker
@@ -111,6 +113,8 @@ jobs:
         env:
           PORT: "3000"
           BASE_PATH: "/"
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_CLERK_PROXY_URL: ${{ secrets.VITE_CLERK_PROXY_URL }}
 
       - name: Sync Capacitor
         working-directory: artifacts/habit-tracker
