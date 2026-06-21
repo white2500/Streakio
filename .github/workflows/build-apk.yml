@@ -8,23 +8,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # ── Debug APK (always built, no secrets needed) ──────────────────────────
+  debug:
+    name: Debug APK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: artifacts/habit-tracker
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
           run_install: false
@@ -32,10 +28,8 @@ jobs:
       - name: Get pnpm store path
         id: pnpm-cache
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-        working-directory: .
 
-      - name: Cache pnpm store
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -43,23 +37,20 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: .
 
       - name: Build web app
         run: pnpm --filter @workspace/habit-tracker run build
 
       - name: Sync Capacitor
-        run: npx cap sync android
         working-directory: artifacts/habit-tracker
+        run: npx cap sync android
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -68,15 +59,92 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
+        run: chmod +x artifacts/habit-tracker/android/gradlew
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
         working-directory: artifacts/habit-tracker/android
+        run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: streakio-debug-${{ github.sha }}
           path: artifacts/habit-tracker/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+  # ── Release APK (signed, Play Store ready) ───────────────────────────────
+  release:
+    name: Release APK (signed)
+    runs-on: ubuntu-latest
+    # Only runs when all four signing secrets are present
+    if: |
+      secrets.KEYSTORE_BASE64 != '' &&
+      secrets.KEYSTORE_PASSWORD != '' &&
+      secrets.KEY_ALIAS != '' &&
+      secrets.KEY_PASSWORD != ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        id: pnpm-cache
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm --filter @workspace/habit-tracker run build
+
+      - name: Sync Capacitor
+        working-directory: artifacts/habit-tracker
+        run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('artifacts/habit-tracker/android/**/*.gradle*', 'artifacts/habit-tracker/android/**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > /tmp/streakio-release.jks
+
+      - name: Make gradlew executable
+        run: chmod +x artifacts/habit-tracker/android/gradlew
+
+      - name: Build release APK
+        working-directory: artifacts/habit-tracker/android
+        env:
+          KEYSTORE_PATH: /tmp/streakio-release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streakio-release-${{ github.sha }}
+          path: artifacts/habit-tracker/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 90
