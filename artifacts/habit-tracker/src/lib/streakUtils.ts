@@ -81,6 +81,50 @@ export function getMilestonesForHabit(
   ).map((m) => m.milestone);
 }
 
+export function getMilestoneProgress(
+  completions: Record<string, boolean>,
+  habitId: string,
+): {
+  earned: Milestone[];
+  next: Milestone | null;
+  remaining: number;
+  progressPct: number;
+} {
+  const streak = currentStreakForHabit(completions, habitId);
+  const total = totalCheckinsForHabit(completions, habitId);
+  const earned: Milestone[] = [];
+  let next: { milestone: Milestone; remaining: number } | null = null;
+  let nextType: "streak" | "checkins" | null = null;
+
+  for (const def of MILESTONE_DEFS) {
+    const current = def.type === "streak" ? streak : total;
+    if (current >= def.threshold) {
+      earned.push(def.milestone);
+    } else if (!next) {
+      next = { milestone: def.milestone, remaining: def.threshold - current };
+      nextType = def.type;
+    }
+  }
+
+  const progressPct = next && nextType
+    ? Math.min(
+        100,
+        Math.round(
+          ((nextType === "streak" ? streak : total) /
+            (nextType === "streak" ? streak + next.remaining : total + next.remaining)) *
+            100,
+        ),
+      )
+    : 100;
+
+  return {
+    earned,
+    next: next?.milestone ?? null,
+    remaining: next?.remaining ?? 0,
+    progressPct,
+  };
+}
+
 export function nextMilestoneForHabit(
   completions: Record<string, boolean>,
   habitId: string,

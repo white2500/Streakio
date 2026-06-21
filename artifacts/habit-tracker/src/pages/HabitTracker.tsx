@@ -39,7 +39,11 @@ import { AdBanner } from "@/components/AdBanner";
 import { exportAsJson, exportAsCsv, exportAsExcel } from "@/lib/exportData";
 import { THEMES } from "@/lib/themes";
 import { useNotifications } from "@/hooks/useNotifications";
-import { currentStreakForHabit, getMilestonesForHabit } from "@/lib/streakUtils";
+import {
+  currentStreakForHabit,
+  getMilestoneProgress,
+  type Milestone,
+} from "@/lib/streakUtils";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -66,6 +70,79 @@ const PALETTE = [
   "#94a3b8",
 ];
 
+function MilestoneBar({
+  milestones,
+  next,
+  remaining,
+  progressPct,
+  color,
+}: {
+  milestones: Milestone[];
+  next: Milestone | null;
+  remaining: number;
+  progressPct: number;
+  color: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      {/* Section label */}
+      <div className="flex items-center gap-1">
+        <span className="text-[9px] uppercase tracking-wider text-white/25 font-semibold">
+          Milestones
+        </span>
+        {milestones.length > 0 && (
+          <span className="text-[9px] text-white/20">
+            {milestones.length} earned
+          </span>
+        )}
+      </div>
+
+      {/* Earned badges row */}
+      {milestones.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {milestones.map((m) => (
+            <span
+              key={m.id}
+              className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/8 px-2 py-0.5 text-[11px] text-white/70"
+              title={m.description}
+            >
+              {m.emoji} {m.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Next milestone progress */}
+      {next && (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-white/70 shrink-0 font-medium">
+            {next.emoji} {next.label}
+          </span>
+          <div className="flex-1 h-2 rounded-full bg-white/12 overflow-hidden">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: color }}
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(8, progressPct)}%` }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            />
+          </div>
+          <span className="text-[11px] text-white/70 tabular-nums shrink-0 w-8 text-right font-medium">
+            {remaining}d
+          </span>
+        </div>
+      )}
+
+      {/* All done */}
+      {!next && milestones.length > 0 && (
+        <span className="text-[11px] text-white/50 font-medium">
+          All milestones earned
+        </span>
+      )}
+    </div>
+  );
+}
+
 function HabitRow({
   habit,
   days,
@@ -84,7 +161,7 @@ function HabitRow({
   const daysElapsed = days.filter((d) => !d.isFuture).length;
   const rate = daysElapsed > 0 ? Math.round((completed / daysElapsed) * 100) : 0;
   const streak = currentStreakForHabit(completions, habit.id);
-  const milestones = getMilestonesForHabit(completions, habit.id);
+  const { earned, next, remaining, progressPct } = getMilestoneProgress(completions, habit.id);
 
   return (
     <Reorder.Item
@@ -115,13 +192,6 @@ function HabitRow({
           {streak > 0 && (
             <span className="flex items-center gap-0.5 text-[11px] font-semibold text-orange-400 tabular-nums">
               🔥 {streak}d
-            </span>
-          )}
-
-          {/* Milestone emojis */}
-          {milestones.length > 0 && (
-            <span className="text-[13px]" title={milestones.map((m) => m.description).join(", ")}>
-              {milestones[milestones.length - 1].emoji}
             </span>
           )}
 
@@ -195,6 +265,30 @@ function HabitRow({
             </div>
             <span className="text-[10px] text-white/35 tabular-nums w-7 text-right">{rate}%</span>
           </div>
+        )}
+
+        {/* Milestones bar */}
+        <div className="mt-2">
+          <MilestoneBar
+            milestones={earned}
+            next={next}
+            remaining={remaining}
+            progressPct={progressPct}
+            color={habit.color}
+          />
+        </div>
+
+        {/* Animation for first milestone */}
+        {earned.length === 0 && next && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="mt-1 flex items-center gap-1.5"
+          >
+            <span className="text-[10px] text-white/25">Next milestone:</span>
+            <span className="text-[10px] text-white/40">{next.emoji} {next.label} ({remaining}d)</span>
+          </motion.div>
         )}
       </div>
     </Reorder.Item>
