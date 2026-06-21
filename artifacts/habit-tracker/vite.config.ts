@@ -111,6 +111,11 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Take over immediately on deploy — don't wait for all tabs to close
+        skipWaiting: true,
+        clientsClaim: true,
+        // Purge old caches so stale assets never serve after a deploy
+        cleanupOutdatedCaches: true,
         globPatterns: [
           "**/*.{js,css,html,ico,png,svg,woff2,webmanifest}",
         ],
