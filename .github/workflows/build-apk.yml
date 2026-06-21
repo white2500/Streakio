@@ -75,12 +75,8 @@ jobs:
   release:
     name: Release APK (signed)
     runs-on: ubuntu-latest
-    # Only runs when all four signing secrets are present
-    if: |
-      secrets.KEYSTORE_BASE64 != '' &&
-      secrets.KEYSTORE_PASSWORD != '' &&
-      secrets.KEY_ALIAS != '' &&
-      secrets.KEY_PASSWORD != ''
+    # Skips gracefully when signing secrets are not yet configured
+    if: ${{ vars.ENABLE_RELEASE_BUILD == 'true' }}
 
     steps:
       - uses: actions/checkout@v4
