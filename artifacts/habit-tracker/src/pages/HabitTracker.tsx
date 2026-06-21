@@ -691,8 +691,8 @@ export default function Streakio() {
   if (!isLoaded) return null;
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col font-sans select-none overflow-hidden">
-      <header className="shrink-0 bg-black border-b border-white/10 px-4 pt-12 pb-3">
+    <div className="h-dvh bg-black text-white flex flex-col font-sans select-none overflow-hidden">
+      <header className="shrink-0 bg-black border-b border-white/10 px-4 pt-12-safe pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
@@ -764,8 +764,8 @@ export default function Streakio() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-2xl mx-auto px-4 py-4">
+      <div className="flex-1 overflow-auto overscroll-contain">
+        <div className="max-w-2xl mx-auto px-4 py-4 pb-10-safe">
           {habits.length === 0 ? (
             <div className="py-20 text-center text-white/30 px-6">
               <p className="text-sm">No habits yet.</p>

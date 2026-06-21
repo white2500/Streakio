@@ -31,7 +31,7 @@ export default function Upgrade() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white flex flex-col">
+    <div className="min-h-dvh bg-black text-white flex flex-col">
       <header className="flex items-center gap-2 px-4 pt-6 pb-2">
         <button
           onClick={() => setLocation("/app")}
@@ -43,7 +43,7 @@ export default function Upgrade() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col items-center px-6 pt-6">
+      <main className="flex-1 flex flex-col items-center px-6 pt-6 pb-10-safe">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}

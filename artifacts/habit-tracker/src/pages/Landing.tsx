@@ -9,7 +9,7 @@ export default function Landing() {
   const [, setLocation] = useLocation();
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white flex flex-col">
+    <div className="min-h-dvh bg-black text-white flex flex-col">
       <header className="flex items-center justify-between px-5 pt-6">
         <div className="flex items-center gap-2">
           <img src={`${basePath}/logo.svg`} alt="Streakio" className="h-7 w-auto" />
@@ -78,7 +78,7 @@ export default function Landing() {
         </motion.div>
       </main>
 
-      <footer className="px-6 pb-8 pt-4 text-center text-xs text-white/30">
+      <footer className="px-6 pb-8-safe pt-4 text-center text-xs text-white/30">
         Free to use. Upgrade any time.
       </footer>
     </div>

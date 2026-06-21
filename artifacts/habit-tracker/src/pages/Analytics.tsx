@@ -70,7 +70,7 @@ export default function Analytics() {
 
   if (!isPremium) {
     return (
-      <div className="min-h-[100dvh] bg-black text-white flex flex-col">
+      <div className="min-h-dvh bg-black text-white flex flex-col">
         <header className="flex items-center gap-2 px-4 pt-6 pb-2">
           <button
             onClick={() => setLocation("/app")}
@@ -81,7 +81,7 @@ export default function Analytics() {
             <ChevronLeft className="h-5 w-5 text-white/60" />
           </button>
         </header>
-        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center pb-safe">
           <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
             <Lock className="h-6 w-6" />
           </span>
@@ -106,7 +106,7 @@ export default function Analytics() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white flex flex-col">
+    <div className="min-h-dvh bg-black text-white flex flex-col">
       <header className="flex items-center gap-2 px-4 pt-6 pb-2">
         <button
           onClick={() => setLocation("/app")}
@@ -119,7 +119,7 @@ export default function Analytics() {
         <h1 className="text-xl font-semibold tracking-tight">Analytics</h1>
       </header>
 
-      <main className="flex-1 overflow-auto px-4 pb-10">
+      <main className="flex-1 overflow-auto overscroll-contain px-4 pb-10-safe">
         {!isLoaded ? null : habits.length === 0 ? (
           <div className="py-20 text-center text-white/30 text-sm">
             Add habits to see your analytics.

@@ -155,7 +155,7 @@ function AppShell() {
 
 function SignInPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-black px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-black px-4">
       <SignIn
         routing="path"
         path={`${basePath}/sign-in`}
@@ -167,7 +167,7 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-black px-4">
+    <div className="flex min-h-dvh items-center justify-center bg-black px-4">
       <SignUp
         routing="path"
         path={`${basePath}/sign-up`}
