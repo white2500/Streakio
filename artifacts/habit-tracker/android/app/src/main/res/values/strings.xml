@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Streakio</string>
+    <string name="title_activity_main">Streakio</string>
+    <string name="package_name">com.streakio.app</string>
+    <string name="custom_url_scheme">com.streakio.app</string>
+</resources>
