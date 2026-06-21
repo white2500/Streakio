@@ -21,6 +21,12 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+        debug {
+            // capacitor-android and capacitor-cordova-android-plugins only publish
+            // a release variant (singleVariant). Tell Gradle to fall back to release
+            // when resolving dependencies in debug mode.
+            matchingFallbacks = ['release', 'debug']
+        }
     }
 }
 
