@@ -23,6 +23,11 @@ import {
   LogOut,
   Sparkles,
   Cloud,
+  Bell,
+  BellOff,
+  Smartphone,
+  X,
+  ChevronRight as ArrowRight,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
@@ -33,6 +38,7 @@ import { PremiumBadge } from "@/components/PremiumBadge";
 import { AdBanner } from "@/components/AdBanner";
 import { exportAsJson, exportAsCsv, exportAsExcel } from "@/lib/exportData";
 import { THEMES } from "@/lib/themes";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -179,6 +185,113 @@ function HabitRow({
   );
 }
 
+function WidgetGuideModal({ onClose }: { onClose: () => void }) {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="w-full max-w-sm rounded-2xl bg-neutral-950 border border-white/10 p-6 text-white"
+        initial={{ y: 24, opacity: 0, scale: 0.97 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 24, opacity: 0, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 340, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4 text-white/60" />
+            <h3 className="text-base font-semibold">Add to Home Screen</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/8 transition-colors"
+          >
+            <X className="h-4 w-4 text-white/50" />
+          </button>
+        </div>
+
+        {isIOS && (
+          <div className="space-y-3 text-sm text-white/70">
+            <p className="text-white/50 text-xs uppercase tracking-wider font-semibold">iPhone / iPad</p>
+            <ol className="space-y-2.5">
+              {[
+                "Open Streakio in Safari",
+                'Tap the Share button (□↑) at the bottom of the screen',
+                'Scroll down and tap "Add to Home Screen"',
+                'Tap "Add" in the top-right corner',
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-white/10 text-[11px] font-semibold text-white/60 flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="text-white/40 text-xs pt-1">
+              Once added, Streakio opens full-screen like a native app with no browser chrome.
+            </p>
+          </div>
+        )}
+
+        {isAndroid && (
+          <div className="space-y-3 text-sm text-white/70">
+            <p className="text-white/50 text-xs uppercase tracking-wider font-semibold">Android</p>
+            <ol className="space-y-2.5">
+              {[
+                "Open Streakio in Chrome",
+                "Tap the three-dot menu (⋮) in the top-right",
+                'Tap "Add to Home screen"',
+                'Tap "Add" to confirm',
+              ].map((step, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-white/10 text-[11px] font-semibold text-white/60 flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="text-white/40 text-xs pt-1">
+              You may also see an "Install app" banner at the bottom of the screen — tap it for a shortcut.
+            </p>
+          </div>
+        )}
+
+        {!isIOS && !isAndroid && (
+          <div className="space-y-3 text-sm text-white/70">
+            <div className="space-y-3">
+              <div>
+                <p className="text-white/50 text-xs uppercase tracking-wider font-semibold mb-2">iPhone / iPad (Safari)</p>
+                <p>Tap Share (□↑) → "Add to Home Screen" → Add</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs uppercase tracking-wider font-semibold mb-2">Android (Chrome)</p>
+                <p>Menu (⋮) → "Add to Home screen" → Add</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs uppercase tracking-wider font-semibold mb-2">Desktop (Chrome / Edge)</p>
+                <p>Click the install icon (⊕) in the address bar, or Menu → "Install Streakio"</p>
+              </div>
+            </div>
+            <p className="text-white/40 text-xs pt-1">
+              Once installed, Streakio runs as a standalone app with no browser chrome.
+            </p>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function SettingsMenu({
   onExport,
   habitsCount,
@@ -187,9 +300,11 @@ function SettingsMenu({
   habitsCount: number;
 }) {
   const [open, setOpen] = useState(false);
+  const [showWidgetGuide, setShowWidgetGuide] = useState(false);
   const { isPremium } = usePremium();
   const { signOut } = useClerk();
   const { themeId, setTheme } = useTheme();
+  const { supported: notifSupported, permission, settings: notifSettings, enable: enableNotif, disable: disableNotif, setTime: setNotifTime } = useNotifications();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -203,119 +318,188 @@ function SettingsMenu({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  const handleNotifToggle = async () => {
+    if (notifSettings.enabled) {
+      disableNotif();
+    } else {
+      await enableNotif();
+    }
+  };
+
+  const notifBlocked = permission === "denied";
+
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        data-testid="button-settings"
-        aria-label="Settings"
-        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 transition-colors"
-      >
-        <Settings className="w-4 h-4 text-white/60" />
-      </button>
+    <>
+      <div className="relative" ref={ref}>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          data-testid="button-settings"
+          aria-label="Settings"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/8 transition-colors"
+        >
+          <Settings className="w-4 h-4 text-white/60" />
+        </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-            transition={{ duration: 0.12 }}
-            className="absolute right-0 top-10 z-50 w-60 rounded-xl border border-white/10 bg-neutral-950 p-2 shadow-xl"
-            data-testid="menu-settings"
-          >
-            <div className="px-2 py-1.5 flex items-center gap-1.5 text-[11px] text-white/40">
-              {isPremium ? (
-                <>
-                  <Cloud className="h-3 w-3" /> Synced across devices
-                </>
-              ) : (
-                "Stored on this device"
-              )}
-            </div>
-
-            <div className="my-1 border-t border-white/8" />
-
-            <div className="px-2 py-1.5">
-              <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-white/35">
-                <Palette className="h-3 w-3" /> Theme
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.12 }}
+              className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-white/10 bg-neutral-950 p-2 shadow-xl"
+              data-testid="menu-settings"
+            >
+              <div className="px-2 py-1.5 flex items-center gap-1.5 text-[11px] text-white/40">
+                {isPremium ? (
+                  <>
+                    <Cloud className="h-3 w-3" /> Synced across devices
+                  </>
+                ) : (
+                  "Stored on this device"
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                {THEMES.map((t) => {
-                  const locked = t.premium && !isPremium;
-                  return (
+
+              <div className="my-1 border-t border-white/8" />
+
+              {/* Theme */}
+              <div className="px-2 py-1.5">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-white/35">
+                  <Palette className="h-3 w-3" /> Theme
+                </div>
+                <div className="flex items-center gap-2">
+                  {THEMES.map((t) => {
+                    const locked = t.premium && !isPremium;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setTheme(t.id)}
+                        data-testid={`theme-${t.id}`}
+                        title={t.name + (locked ? " (Premium)" : "")}
+                        style={{ backgroundColor: t.accent }}
+                        className={`relative h-6 w-6 rounded-full transition-transform ${
+                          themeId === t.id
+                            ? "ring-2 ring-offset-2 ring-offset-neutral-950 ring-white/50 scale-110"
+                            : "opacity-70 hover:opacity-100"
+                        }`}
+                      >
+                        {locked && (
+                          <span className="absolute -right-1 -top-1 text-[8px]">
+                            <Sparkles className="h-2.5 w-2.5 text-white" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="my-1 border-t border-white/8" />
+
+              {/* Notifications */}
+              <div className="px-2 py-1.5">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-white/35">
+                  <Bell className="h-3 w-3" /> Daily Reminder
+                </div>
+                {!notifSupported ? (
+                  <p className="text-[11px] text-white/30 px-0.5">Not supported in this browser</p>
+                ) : notifBlocked ? (
+                  <p className="text-[11px] text-white/30 px-0.5">
+                    Blocked — allow notifications in your browser settings
+                  </p>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
                     <button
-                      key={t.id}
-                      onClick={() => setTheme(t.id)}
-                      data-testid={`theme-${t.id}`}
-                      title={t.name + (locked ? " (Premium)" : "")}
-                      style={{ backgroundColor: t.accent }}
-                      className={`relative h-6 w-6 rounded-full transition-transform ${
-                        themeId === t.id
-                          ? "ring-2 ring-offset-2 ring-offset-neutral-950 ring-white/50 scale-110"
-                          : "opacity-70 hover:opacity-100"
+                      onClick={handleNotifToggle}
+                      className={`flex items-center gap-1.5 text-sm rounded-lg px-2 py-1.5 transition-colors ${
+                        notifSettings.enabled
+                          ? "text-white bg-white/10 hover:bg-white/15"
+                          : "text-white/60 hover:bg-white/8"
                       }`}
                     >
-                      {locked && (
-                        <span className="absolute -right-1 -top-1 text-[8px]">
-                          <Sparkles className="h-2.5 w-2.5 text-white" />
-                        </span>
+                      {notifSettings.enabled ? (
+                        <><Bell className="h-3.5 w-3.5" /> On</>
+                      ) : (
+                        <><BellOff className="h-3.5 w-3.5" /> Off</>
                       )}
                     </button>
-                  );
-                })}
+                    {notifSettings.enabled && (
+                      <input
+                        type="time"
+                        value={notifSettings.time}
+                        onChange={(e) => setNotifTime(e.target.value)}
+                        className="bg-white/8 border border-white/15 text-white text-sm rounded-lg px-2 py-1 outline-none focus:border-white/40 transition-colors"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
 
-            <div className="my-1 border-t border-white/8" />
+              <div className="my-1 border-t border-white/8" />
 
-            <button
-              onClick={() => {
-                onExport("csv");
-                setOpen(false);
-              }}
-              disabled={habitsCount === 0}
-              data-testid="button-export-csv"
-              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" /> Export CSV
-            </button>
-            <button
-              onClick={() => {
-                onExport("json");
-                setOpen(false);
-              }}
-              disabled={habitsCount === 0}
-              data-testid="button-export-json"
-              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" /> Export JSON
-            </button>
-            <button
-              onClick={() => {
-                onExport("xlsx");
-                setOpen(false);
-              }}
-              disabled={habitsCount === 0}
-              data-testid="button-export-excel"
-              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" /> Export Excel
-            </button>
+              {/* Add to home screen */}
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setShowWidgetGuide(true);
+                }}
+                data-testid="button-add-to-home"
+                className="w-full flex items-center justify-between rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Smartphone className="h-3.5 w-3.5" /> Add to Home Screen
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 text-white/30" />
+              </button>
 
-            <div className="my-1 border-t border-white/8" />
+              <div className="my-1 border-t border-white/8" />
 
-            <button
-              onClick={() => signOut({ redirectUrl: basePath || "/" })}
-              data-testid="button-sign-out"
-              className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5" /> Sign out
-            </button>
-          </motion.div>
+              {/* Export */}
+              <button
+                onClick={() => { onExport("csv"); setOpen(false); }}
+                disabled={habitsCount === 0}
+                data-testid="button-export-csv"
+                className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" /> Export CSV
+              </button>
+              <button
+                onClick={() => { onExport("json"); setOpen(false); }}
+                disabled={habitsCount === 0}
+                data-testid="button-export-json"
+                className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" /> Export JSON
+              </button>
+              <button
+                onClick={() => { onExport("xlsx"); setOpen(false); }}
+                disabled={habitsCount === 0}
+                data-testid="button-export-excel"
+                className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 disabled:opacity-30 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" /> Export Excel
+              </button>
+
+              <div className="my-1 border-t border-white/8" />
+
+              <button
+                onClick={() => signOut({ redirectUrl: basePath || "/" })}
+                data-testid="button-sign-out"
+                className="w-full flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/80 hover:bg-white/8 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Sign out
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence>
+        {showWidgetGuide && (
+          <WidgetGuideModal onClose={() => setShowWidgetGuide(false)} />
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
