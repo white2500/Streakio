@@ -48,8 +48,8 @@ export default defineConfig({
         name: "Streakio",
         short_name: "Streakio",
         description: "Track your habits every single day.",
-        start_url: "./",
-        scope: "./",
+        start_url: "/",
+        scope: "/",
         theme_color: "#0A0A0A",
         background_color: "#0A0A0A",
         display: "standalone",
@@ -98,7 +98,7 @@ export default defineConfig({
             name: "Track today",
             short_name: "Track",
             description: "Open the habit tracker",
-            url: "./",
+            url: "/",
             icons: [
               {
                 src: "icon-192.png",
@@ -121,7 +121,7 @@ export default defineConfig({
         ],
         globIgnores: ["**/*.map"],
         navigateFallback: "index.html",
-        navigateFallbackAllowlist: [new RegExp("^(?!\/(api|clerk))")],
+        navigateFallbackAllowlist: [new RegExp("^(?!\/(api|clerk|\.well-known))")],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
