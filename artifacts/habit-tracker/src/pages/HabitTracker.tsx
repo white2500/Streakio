@@ -149,14 +149,17 @@ function HabitRow({
   completions,
   onDelete,
   onToggle,
+  onColorChange,
 }: {
   habit: Habit;
   days: { day: number; dateStr: string; isToday: boolean; isFuture: boolean }[];
   completions: Record<string, boolean>;
   onDelete: (id: string) => void;
   onToggle: (id: string, dateStr: string) => void;
+  onColorChange: (id: string, color: string) => void;
 }) {
   const controls = useDragControls();
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const completed = days.filter((d) => completions[`${habit.id}-${d.dateStr}`]).length;
   const daysElapsed = days.filter((d) => !d.isFuture).length;
   const rate = daysElapsed > 0 ? Math.round((completed / daysElapsed) * 100) : 0;
@@ -182,8 +185,10 @@ function HabitRow({
           >
             <GripVertical className="w-3.5 h-3.5" />
           </button>
-          <span
-            className="h-2.5 w-2.5 rounded-full shrink-0"
+          <button
+            onClick={() => setColorPickerOpen((v) => !v)}
+            aria-label="Change color"
+            className="h-3 w-3 rounded-full shrink-0 ring-offset-neutral-950 hover:ring-2 hover:ring-white/40 hover:ring-offset-1 transition-all"
             style={{ backgroundColor: habit.color }}
           />
           <span className="flex-1 text-sm font-medium truncate">{habit.name}</span>
@@ -205,6 +210,45 @@ function HabitRow({
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* Color picker */}
+        <AnimatePresence>
+          {colorPickerOpen && (
+            <>
+              <motion.div
+                className="fixed inset-0 z-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setColorPickerOpen(false)}
+              />
+              <motion.div
+                className="relative z-20 mb-3 p-2 rounded-xl bg-neutral-900 border border-white/10 flex flex-wrap gap-1.5"
+                initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                transition={{ duration: 0.12 }}
+              >
+                {PALETTE.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => {
+                      onColorChange(habit.id, color);
+                      setColorPickerOpen(false);
+                    }}
+                    style={{ backgroundColor: color }}
+                    className={`w-6 h-6 rounded-full transition-transform ${
+                      habit.color === color
+                        ? "scale-125 ring-2 ring-white/50 ring-offset-1 ring-offset-neutral-900"
+                        : "opacity-60 hover:opacity-100 hover:scale-110"
+                    }`}
+                  />
+                ))}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Day grid — 10 columns, ~3 rows for a 30-day month */}
         <div className="grid grid-cols-10 gap-1">
@@ -621,6 +665,7 @@ export default function Streakio() {
     setCurrentMonth,
     addHabit,
     deleteHabit,
+    updateHabit,
     toggleCompletion,
     reorderHabits,
     isLoaded,
@@ -786,6 +831,7 @@ export default function Streakio() {
                   completions={completions}
                   onDelete={setConfirmDeleteId}
                   onToggle={toggleCompletion}
+                  onColorChange={updateHabit}
                 />
               ))}
             </Reorder.Group>

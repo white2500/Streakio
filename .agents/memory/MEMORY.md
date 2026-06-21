@@ -1,2 +1,3 @@
 - [Habit tracker monetization](habit-tracker-monetization.md) — free=localStorage+ad, premium=cloud sync; all users sign in (Clerk), entitlement is server-side per userId; purchase simulated, Stripe-ready.
 - [Capacitor Android variant fix](capacitor-android-variant-fix.md) — add debug { matchingFallbacks = ['release','debug'] } to app/build.gradle after every cap add android; fixes AGP 8+ variant resolution error.
+- [API server @clerk/shared build fix](api-server-clerk-shared.md) — externalize @clerk/* in build.mjs AND remove direct @clerk/shared/keys import from app.ts; use env var directly instead of publishableKeyFromHost.

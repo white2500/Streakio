@@ -6,6 +6,7 @@ import {
   useListCompletions,
   useCreateHabit,
   useDeleteHabit,
+  useUpdateHabit,
   useReorderHabits,
   useToggleCompletion,
   getListHabitsQueryKey,
@@ -38,6 +39,7 @@ export interface HabitsApi {
   setCurrentMonth: (m: string) => void;
   addHabit: (name: string, color: string) => void;
   deleteHabit: (habitId: string) => void;
+  updateHabit: (habitId: string, color: string) => void;
   toggleCompletion: (habitId: string, dateStr: string) => void;
   reorderHabits: (newOrder: Habit[]) => void;
   isLoaded: boolean;
@@ -108,6 +110,12 @@ function useLocalHabits(): HabitsApi {
     });
   }, []);
 
+  const updateHabit = useCallback((habitId: string, color: string) => {
+    setHabits((prev) =>
+      prev.map((h) => (h.id === habitId ? { ...h, color } : h)),
+    );
+  }, []);
+
   const toggleCompletion = useCallback((habitId: string, dateStr: string) => {
     const key = completionKey(habitId, dateStr);
     setCompletions((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -124,6 +132,7 @@ function useLocalHabits(): HabitsApi {
     setCurrentMonth,
     addHabit,
     deleteHabit,
+    updateHabit,
     toggleCompletion,
     reorderHabits,
     isLoaded,
@@ -168,6 +177,23 @@ function useCloudHabits(enabled: boolean): HabitsApi {
         qc.invalidateQueries({ queryKey: habitsKey });
         qc.invalidateQueries({ queryKey: completionsKey });
       },
+    },
+  });
+
+  const updateM = useUpdateHabit({
+    mutation: {
+      onMutate: async ({ id, data }) => {
+        await qc.cancelQueries({ queryKey: habitsKey });
+        const prev = qc.getQueryData<ApiHabit[]>(habitsKey);
+        qc.setQueryData<ApiHabit[]>(habitsKey, (old = []) =>
+          old.map((h) => (h.id === id ? { ...h, ...data } : h)),
+        );
+        return { prev };
+      },
+      onError: (_e, _v, ctx) => {
+        if (ctx?.prev) qc.setQueryData(habitsKey, ctx.prev);
+      },
+      onSettled: () => qc.invalidateQueries({ queryKey: habitsKey }),
     },
   });
 
@@ -244,6 +270,13 @@ function useCloudHabits(enabled: boolean): HabitsApi {
     [deleteM],
   );
 
+  const updateHabit = useCallback(
+    (habitId: string, color: string) => {
+      updateM.mutate({ id: habitId, data: { color } });
+    },
+    [updateM],
+  );
+
   const toggleCompletion = useCallback(
     (habitId: string, dateStr: string) => {
       toggleM.mutate({ data: { habitId, date: dateStr } });
@@ -265,6 +298,7 @@ function useCloudHabits(enabled: boolean): HabitsApi {
     setCurrentMonth,
     addHabit,
     deleteHabit,
+    updateHabit,
     toggleCompletion,
     reorderHabits,
     // Unblock the UI once both queries settle — success OR error — so a
