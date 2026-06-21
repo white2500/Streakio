@@ -39,6 +39,7 @@ import { AdBanner } from "@/components/AdBanner";
 import { exportAsJson, exportAsCsv, exportAsExcel } from "@/lib/exportData";
 import { THEMES } from "@/lib/themes";
 import { useNotifications } from "@/hooks/useNotifications";
+import { currentStreakForHabit, getMilestonesForHabit } from "@/lib/streakUtils";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -79,9 +80,11 @@ function HabitRow({
   onToggle: (id: string, dateStr: string) => void;
 }) {
   const controls = useDragControls();
-  const completed = days.filter(
-    (d) => completions[`${habit.id}-${d.dateStr}`],
-  ).length;
+  const completed = days.filter((d) => completions[`${habit.id}-${d.dateStr}`]).length;
+  const daysElapsed = days.filter((d) => !d.isFuture).length;
+  const rate = daysElapsed > 0 ? Math.round((completed / daysElapsed) * 100) : 0;
+  const streak = currentStreakForHabit(completions, habit.id);
+  const milestones = getMilestonesForHabit(completions, habit.id);
 
   return (
     <Reorder.Item
@@ -106,12 +109,23 @@ function HabitRow({
             className="h-2.5 w-2.5 rounded-full shrink-0"
             style={{ backgroundColor: habit.color }}
           />
-          <span className="flex-1 text-sm font-medium truncate">
-            {habit.name}
-          </span>
-          <span className="text-xs text-white/30 tabular-nums">
-            {completed}/{days.length}
-          </span>
+          <span className="flex-1 text-sm font-medium truncate">{habit.name}</span>
+
+          {/* Streak badge */}
+          {streak > 0 && (
+            <span className="flex items-center gap-0.5 text-[11px] font-semibold text-orange-400 tabular-nums">
+              🔥 {streak}d
+            </span>
+          )}
+
+          {/* Milestone emojis */}
+          {milestones.length > 0 && (
+            <span className="text-[13px]" title={milestones.map((m) => m.description).join(", ")}>
+              {milestones[milestones.length - 1].emoji}
+            </span>
+          )}
+
+          <span className="text-xs text-white/30 tabular-nums">{completed}/{days.length}</span>
           <button
             onClick={() => onDelete(habit.id)}
             data-testid={`button-delete-${habit.id}`}
@@ -124,62 +138,64 @@ function HabitRow({
 
         {/* Day grid — 10 columns, ~3 rows for a 30-day month */}
         <div className="grid grid-cols-10 gap-1">
-          {days.map(
-            ({ day, dateStr, isToday: todayFlag, isFuture: futureFlag }) => {
-              const isChecked = !!completions[`${habit.id}-${dateStr}`];
-              return (
-                <div
-                  key={dateStr}
-                  className={`flex flex-col items-center gap-0.5 ${futureFlag ? "opacity-25" : ""}`}
+          {days.map(({ day, dateStr, isToday: todayFlag, isFuture: futureFlag }) => {
+            const isChecked = !!completions[`${habit.id}-${dateStr}`];
+            return (
+              <div
+                key={dateStr}
+                className={`flex flex-col items-center gap-0.5 ${futureFlag ? "opacity-25" : ""}`}
+              >
+                <span
+                  className={`text-[10px] font-medium w-5 h-5 flex items-center justify-center rounded-full
+                  ${todayFlag ? "bg-white/20 text-white" : "text-white/40"}`}
                 >
-                  <span
-                    className={`text-[10px] font-medium w-5 h-5 flex items-center justify-center rounded-full
-                    ${todayFlag ? "bg-white/20 text-white" : "text-white/40"}`}
-                  >
-                    {day}
-                  </span>
-                  <button
-                    onClick={() =>
-                      !futureFlag && onToggle(habit.id, dateStr)
-                    }
-                    disabled={futureFlag}
-                    data-testid={`checkbox-${habit.id}-${dateStr}`}
-                    style={
-                      isChecked
-                        ? {
-                            backgroundColor: habit.color,
-                            borderColor: habit.color,
-                          }
-                        : {
-                            borderColor: "rgba(255,255,255,0.18)",
-                            backgroundColor: "transparent",
-                          }
-                    }
-                    className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
-                    ${futureFlag ? "cursor-not-allowed" : "cursor-pointer active:scale-90"}`}
-                  >
-                    <AnimatePresence>
-                      {isChecked && (
-                        <motion.div
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 500,
-                            damping: 28,
-                          }}
-                        >
-                          <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </button>
-                </div>
-              );
-            },
-          )}
+                  {day}
+                </span>
+                <button
+                  onClick={() => !futureFlag && onToggle(habit.id, dateStr)}
+                  disabled={futureFlag}
+                  data-testid={`checkbox-${habit.id}-${dateStr}`}
+                  style={
+                    isChecked
+                      ? { backgroundColor: habit.color, borderColor: habit.color }
+                      : { borderColor: "rgba(255,255,255,0.18)", backgroundColor: "transparent" }
+                  }
+                  className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-150
+                  ${futureFlag ? "cursor-not-allowed" : "cursor-pointer active:scale-90"}`}
+                >
+                  <AnimatePresence>
+                    {isChecked && (
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 28 }}
+                      >
+                        <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </button>
+              </div>
+            );
+          })}
         </div>
+
+        {/* Completion rate bar */}
+        {daysElapsed > 0 && (
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex-1 h-1 rounded-full bg-white/8 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: habit.color }}
+                initial={{ width: 0 }}
+                animate={{ width: `${rate}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
+            </div>
+            <span className="text-[10px] text-white/35 tabular-nums w-7 text-right">{rate}%</span>
+          </div>
+        )}
       </div>
     </Reorder.Item>
   );
@@ -514,6 +530,7 @@ export default function Streakio() {
     toggleCompletion,
     reorderHabits,
     isLoaded,
+    isCloud,
   } = useHabits();
 
   const [, setLocation] = useLocation();
@@ -590,7 +607,21 @@ export default function Streakio() {
               className="h-7 w-auto"
             />
             {isPremium ? (
-              <PremiumBadge />
+              <div className="flex items-center gap-1.5">
+                <PremiumBadge />
+                {isCloud && (
+                  <span
+                    title="Cloud sync active"
+                    className="flex items-center gap-1 text-[10px] text-emerald-400/70"
+                  >
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                    </span>
+                    Synced
+                  </span>
+                )}
+              </div>
             ) : (
               <button
                 onClick={() => setLocation("/upgrade")}

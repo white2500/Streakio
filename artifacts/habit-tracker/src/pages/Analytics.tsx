@@ -1,51 +1,18 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import {
-  format,
-  getDaysInMonth,
-  getDate,
-  parseISO,
-  subDays,
-} from "date-fns";
+import { format, getDaysInMonth, getDate } from "date-fns";
 import { ChevronLeft, Lock, Sparkles } from "lucide-react";
 import { useHabits } from "@/hooks/useHabits";
 import { usePremium } from "@/context/PremiumProvider";
-import { completionKey } from "@/lib/completionKey";
 import { UPGRADE_COPY } from "@/lib/features";
-
-function longestStreak(dates: Set<string>): number {
-  const sorted = [...dates].sort();
-  let best = 0;
-  let run = 0;
-  let prev: Date | null = null;
-  for (const d of sorted) {
-    const cur = parseISO(d);
-    if (prev && (cur.getTime() - prev.getTime()) / 86400000 === 1) {
-      run += 1;
-    } else {
-      run = 1;
-    }
-    best = Math.max(best, run);
-    prev = cur;
-  }
-  return best;
-}
-
-function currentStreak(dates: Set<string>): number {
-  let streak = 0;
-  let cursor = new Date();
-  // Allow the streak to count from today or yesterday so a not-yet-checked
-  // today doesn't zero an active streak.
-  if (!dates.has(format(cursor, "yyyy-MM-dd"))) {
-    cursor = subDays(cursor, 1);
-  }
-  while (dates.has(format(cursor, "yyyy-MM-dd"))) {
-    streak += 1;
-    cursor = subDays(cursor, 1);
-  }
-  return streak;
-}
+import {
+  currentStreakForHabit,
+  longestStreakForHabit,
+  totalCheckinsForHabit,
+  getMilestonesForHabit,
+  nextMilestoneForHabit,
+} from "@/lib/streakUtils";
 
 export default function Analytics() {
   const [, setLocation] = useLocation();
@@ -60,30 +27,34 @@ export default function Analytics() {
 
     let totalCheckins = 0;
     let monthCheckins = 0;
+
     const perHabit = habits.map((h) => {
-      const dates = new Set<string>();
+      const current = currentStreakForHabit(completions, h.id);
+      const longest = longestStreakForHabit(completions, h.id);
+      const allTime = totalCheckinsForHabit(completions, h.id);
+      const milestones = getMilestonesForHabit(completions, h.id);
+      const next = nextMilestoneForHabit(completions, h.id);
+
       let monthCount = 0;
       Object.keys(completions).forEach((key) => {
         if (!completions[key]) return;
         if (!key.startsWith(`${h.id}-`)) return;
         const date = key.slice(-10);
-        dates.add(date);
         totalCheckins += 1;
         if (date.startsWith(monthStr)) {
           monthCount += 1;
           monthCheckins += 1;
         }
       });
-      return {
-        habit: h,
-        monthCount,
-        current: currentStreak(dates),
-        longest: longestStreak(dates),
-      };
+
+      const monthRate =
+        dayOfMonth > 0 ? Math.round((monthCount / dayOfMonth) * 100) : 0;
+
+      return { habit: h, monthCount, monthRate, current, longest, allTime, milestones, next };
     });
 
     const possibleThisMonth = habits.length * dayOfMonth;
-    const monthRate =
+    const overallMonthRate =
       possibleThisMonth > 0
         ? Math.round((monthCheckins / possibleThisMonth) * 100)
         : 0;
@@ -91,7 +62,7 @@ export default function Analytics() {
     return {
       totalCheckins,
       monthCheckins,
-      monthRate,
+      overallMonthRate,
       daysInMonth,
       perHabit: perHabit.sort((a, b) => b.current - a.current),
     };
@@ -118,9 +89,8 @@ export default function Analytics() {
             Advanced analytics
           </h1>
           <p className="mt-2 max-w-xs text-sm text-white/50">
-            Unlock streaks, trends, and completion insights with Premium.
-            {" "}
-            {UPGRADE_COPY.subheadline}
+            Unlock streaks, trends, completion rates and milestones with
+            Premium. {UPGRADE_COPY.subheadline}
           </p>
           <button
             onClick={() => setLocation("/upgrade")}
@@ -160,35 +130,112 @@ export default function Analytics() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
+            {/* Overview stats */}
             <div className="grid grid-cols-3 gap-3 mt-2">
-              <Stat label="This month" value={`${stats.monthRate}%`} />
-              <Stat label="Check-ins" value={`${stats.monthCheckins}`} />
-              <Stat label="All time" value={`${stats.totalCheckins}`} />
+              <Stat label="Completion" value={`${stats.overallMonthRate}%`} sub="this month" />
+              <Stat label="Check-ins" value={`${stats.monthCheckins}`} sub="this month" />
+              <Stat label="All time" value={`${stats.totalCheckins}`} sub="check-ins" />
             </div>
 
+            {/* Per-habit */}
             <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-widest text-white/40">
               By habit
             </h2>
-            <div className="space-y-2">
-              {stats.perHabit.map(({ habit, monthCount, current, longest }) => (
-                <div
-                  key={habit.id}
-                  data-testid={`analytics-row-${habit.id}`}
-                  className="rounded-xl border border-white/10 bg-neutral-950 p-4"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: habit.color }}
-                    />
-                    <span className="text-sm font-medium truncate">
-                      {habit.name}
-                    </span>
+            <div className="space-y-3">
+              {stats.perHabit.map(
+                ({ habit, monthCount, monthRate, current, longest, allTime, milestones, next }) => (
+                  <div
+                    key={habit.id}
+                    data-testid={`analytics-row-${habit.id}`}
+                    className="rounded-xl border border-white/10 bg-neutral-950 p-4"
+                  >
+                    {/* Habit name + milestone badge */}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: habit.color }}
+                      />
+                      <span className="flex-1 text-sm font-medium truncate">
+                        {habit.name}
+                      </span>
+                      {milestones.length > 0 && (
+                        <span
+                          className="text-base"
+                          title={milestones.map((m) => m.description).join(" · ")}
+                        >
+                          {milestones[milestones.length - 1].emoji}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Completion rate bar */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${monthRate}%`,
+                            backgroundColor: habit.color,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-white/40 tabular-nums w-8 text-right">
+                        {monthRate}%
+                      </span>
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                      <MiniStat label="Month" value={`${monthCount}`} />
+                      <MiniStat label="All time" value={`${allTime}`} />
+                      <MiniStat label="Streak" value={current > 0 ? `🔥 ${current}d` : "—"} />
+                      <MiniStat label="Best" value={`${longest}d`} />
+                    </div>
+
+                    {/* Milestones earned */}
+                    {milestones.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {milestones.map((m) => (
+                          <span
+                            key={m.id}
+                            title={m.description}
+                            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/60"
+                          >
+                            {m.emoji} {m.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Next milestone hint */}
+                    {next && (
+                      <p className="mt-2 text-[10px] text-white/30">
+                        {next.remaining}d to {next.milestone.emoji} {next.milestone.label}
+                      </p>
+                    )}
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <MiniStat label="This month" value={`${monthCount}`} />
-                    <MiniStat label="Current" value={`${current}d`} />
-                    <MiniStat label="Best" value={`${longest}d`} />
+                ),
+              )}
+            </div>
+
+            {/* Milestones legend */}
+            <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-widest text-white/40">
+              Milestones
+            </h2>
+            <div className="rounded-xl border border-white/10 bg-neutral-950 p-4 grid grid-cols-2 gap-3">
+              {[
+                { emoji: "🔥", label: "Week warrior", desc: "7-day streak" },
+                { emoji: "⚡", label: "Two weeks", desc: "14-day streak" },
+                { emoji: "💎", label: "Monthly master", desc: "30-day streak" },
+                { emoji: "👑", label: "Century streak", desc: "100-day streak" },
+                { emoji: "⭐", label: "50 check-ins", desc: "50 total" },
+                { emoji: "🏆", label: "Century club", desc: "100 total" },
+              ].map((m) => (
+                <div key={m.label} className="flex items-center gap-2">
+                  <span className="text-lg">{m.emoji}</span>
+                  <div>
+                    <p className="text-xs font-medium text-white/70">{m.label}</p>
+                    <p className="text-[10px] text-white/35">{m.desc}</p>
                   </div>
                 </div>
               ))}
@@ -200,13 +247,12 @@ export default function Analytics() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-neutral-950 p-4 text-center">
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
-      <div className="mt-1 text-[10px] uppercase tracking-wider text-white/40">
-        {label}
-      </div>
+      <div className="mt-0.5 text-[10px] uppercase tracking-wider text-white/40">{label}</div>
+      {sub && <div className="text-[9px] text-white/25">{sub}</div>}
     </div>
   );
 }
@@ -214,10 +260,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-lg font-semibold tabular-nums">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-white/35">
-        {label}
-      </div>
+      <div className="text-sm font-semibold tabular-nums">{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-white/35">{label}</div>
     </div>
   );
 }
